@@ -15,8 +15,8 @@ class GameView(arcade.View):
     world_width: Final[int]
     world_height: Final[int]
 
-    player: Final[arcade.Sprite]
-    player_list: Final[arcade.SpriteList[arcade.Sprite]]
+    player: Final[arcade.TextureAnimationSprite]
+    player_list: Final[arcade.SpriteList[arcade.TextureAnimationSprite]]
 
     grounds: Final[arcade.SpriteList[arcade.Sprite]]
     walls: Final[arcade.SpriteList[arcade.Sprite]]
@@ -29,9 +29,9 @@ class GameView(arcade.View):
         self.world_width = 40 * TILE_SIZE
         self.world_height = 20 * TILE_SIZE
 
-        # Player
-        self.player = arcade.Sprite(
-            TEXTURE_PLAYER_IDLE_DOWN,
+        # Player (animated)
+        self.player = arcade.TextureAnimationSprite(
+            animation=ANIMATION_PLAYER_IDLE_DOWN,
             scale=SCALE,
             center_x=grid_to_pixels(2),
             center_y=grid_to_pixels(2),
@@ -58,7 +58,6 @@ class GameView(arcade.View):
 
         # Bushes (walls)
         bush_positions = [(3, 6), (7, 2), (2, 10), (3, 8)]
-
         for x, y in bush_positions:
             self.walls.append(
                 arcade.Sprite(
@@ -75,7 +74,10 @@ class GameView(arcade.View):
 
     def on_draw(self) -> None:
         self.clear()
-
         self.grounds.draw()
         self.walls.draw()
         self.player_list.draw()
+
+    def on_update(self, delta_time: float) -> None:
+        # Update animation each frame
+        self.player.update_animation()
