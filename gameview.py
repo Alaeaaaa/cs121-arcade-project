@@ -14,6 +14,11 @@ class GameView(arcade.View):
     world_width: Final[int]
     world_height: Final[int]
     player: Final[arcade.TextureAnimationSprite]
+    player_list: Final[arcade.SpriteList[arcade.TextureAnimationSprite]]
+    grounds: Final[arcade.SpriteList[arcade.Sprite]]
+    walls: Final[arcade.SpriteList[arcade.Sprite]]
+    physics_engine: Final[arcade.PhysicsEngineSimple]
+    camera: Final[arcade.camera.Camera2D]
 
     def __init__(self) -> None:
         # Magical incantion: initialize the Arcade view
@@ -29,10 +34,10 @@ class GameView(arcade.View):
         #setup our player
         self.player = arcade.TextureAnimationSprite(
             animation=ANIMATION_PLAYER_IDLE_DOWN,
-            scale=SCALE,
-            center_x=grid_to_pixels(2),
-            center_y=grid_to_pixels(2),
+            scale=SCALE, center_x=grid_to_pixels(2), center_y=grid_to_pixels(2)
         )
+        self.player_list = arcade.SpriteList()
+        self.player_list.append(self.player)
         
         #setup the grounds and walls
         self.grounds = arcade.SpriteList(use_spatial_hash=True)
@@ -68,6 +73,7 @@ class GameView(arcade.View):
         self.walls.append(sprite4)
 
         self.physics_engine = arcade.PhysicsEngineSimple(self.player, self.walls)
+        self.camera = arcade.camera.Camera2D()
 
     def on_show_view(self) -> None:
         """Called automatically by 'window.show_view(game_view)' in main.py."""
@@ -80,9 +86,10 @@ class GameView(arcade.View):
     def on_draw(self) -> None:
         """Render the screen."""
         self.clear() # always start with self.clear()
-        self.grounds.draw()
-        self.walls.draw()
-        arcade.draw_sprite(self.player)
+        with self.camera.activate():
+            self.grounds.draw()
+            self.walls.draw()
+            self.player_list.draw()
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         """Called when the user presses a key on the keyboard."""
@@ -122,3 +129,4 @@ class GameView(arcade.View):
         """
         self.physics_engine.update()
         self.player.update_animation()
+        self.camera.position = self.player.position
