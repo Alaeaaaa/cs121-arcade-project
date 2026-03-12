@@ -13,9 +13,7 @@ class GameView(arcade.View):
 
     world_width: Final[int]
     world_height: Final[int]
-    player: Final[arcade.Sprite]
-    grounds: Final[arcade.Sprite]
-    walls: Final[arcade.Sprite]
+    player: Final[arcade.TextureAnimationSprite]
 
     def __init__(self) -> None:
         # Magical incantion: initialize the Arcade view
@@ -69,6 +67,8 @@ class GameView(arcade.View):
         self.walls.append(sprite3)
         self.walls.append(sprite4)
 
+        self.physics_engine = arcade.PhysicsEngineSimple(self.player, self.walls)
+
     def on_show_view(self) -> None:
         """Called automatically by 'window.show_view(game_view)' in main.py."""
         # When we show the view, adjust the window's size to our world size.
@@ -83,3 +83,42 @@ class GameView(arcade.View):
         self.grounds.draw()
         self.walls.draw()
         arcade.draw_sprite(self.player)
+
+    def on_key_press(self, symbol: int, modifiers: int) -> None:
+        """Called when the user presses a key on the keyboard."""
+        match symbol:
+            case arcade.key.RIGHT:
+                # start moving to the right
+                self.player.change_x = +PLAYER_MOVEMENT_SPEED
+            case arcade.key.LEFT:
+                # start moving to the left
+                self.player.change_x = -PLAYER_MOVEMENT_SPEED
+            case arcade.key.UP:
+                # start moving upwards
+                self.player.change_y = +PLAYER_MOVEMENT_SPEED
+            case arcade.key.DOWN:
+                # start moving downwards
+                self.player.change_y = -PLAYER_MOVEMENT_SPEED
+            case arcade.key.ESCAPE:
+                new_view = GameView()
+                self.window.show_view(new_view)
+
+
+
+    def on_key_release(self, symbol: int, modifiers: int) -> None:
+        """Called when the user releases a key on the keyboard."""
+        match symbol:
+            case arcade.key.RIGHT | arcade.key.LEFT:
+                # stop horizontal movement
+                self.player.change_x = 0
+            case arcade.key.UP | arcade.key.DOWN:
+                # stop vertical movement
+                self.player.change_y = 0
+
+    def on_update(self, delta_time: float) -> None:
+        """Called once per frame, before drawing.
+
+        This is where in-world time "advances", or "ticks".
+        """
+        self.physics_engine.update()
+        self.player.update_animation()
