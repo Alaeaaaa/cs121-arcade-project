@@ -1,0 +1,19 @@
+width: 40
+height: 15
+---
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+x   *      x    O   *       S          x
+x          x                 *         x
+x   xxxx   x  xxxx    xxxx             x
+x   x   O  x    *        x     *       x
+x   x  S   xxxxxxxxxx    x        s    x
+x   x      *       x     x             x
+x   xxxxxxxxxxxxx  x     x   O         x
+x      *      O    x     x    *        x
+x   S      xxxx    x     x             x
+x      *      x    xxxxxxxxxx          x
+x   *        x   O      *              x
+x      xx    x      S                  x
+x  P      *  x         *               x
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+---

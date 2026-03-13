@@ -12,4 +12,11 @@ MAX_WINDOW_HEIGHT = 14 * TILE_SIZE
 
 PLAYER_MOVEMENT_SPEED = 4
 """Speed of the player, in pixels per frame."""
+#pour affiner la camera
+LEFT_MARGIN = 200
+RIGHT_MARGIN = 200
+BOTTOM_MARGIN = 150
+TOP_MARGIN = 150
+
+SPINNER_MOVEMENT_SPEED = 3
 
