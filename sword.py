@@ -1,4 +1,9 @@
 import arcade
+from enum import Enum
+from textures import *
+class SwordState(Enum):
+    INACTIVE=1
+    ACTIVE=2
 
 class Sword(arcade.TextureAnimationSprite):
     """
@@ -14,13 +19,10 @@ class Sword(arcade.TextureAnimationSprite):
     - lui donner une animation
     - gérer ses collisions (avec les crystaux)
     """
-
-
-    def __init__(self, ):
-
-    def use(self):
-        if self.active:
-            return
-        self.active=True
-        self.timer=0
-        self.current_frame=0
+    def __init__(self, center_x, center_y, direction):
+        super().__init__()
+        self.center_x=center_x
+        self.center_y=center_y
+        self.direction=direction
+        self.animation = ANIMATION_SWORD[direction]
+        self.state=SwordState.INACTIVE

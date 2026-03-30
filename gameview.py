@@ -9,6 +9,7 @@ from map import Map, GridCell
 from spinner import create_spinners, Direction as SpinnerDirection, Spinner
 from player import Player, Direction
 from boomerang import Boomerang, BoomerangState
+from sword import Sword, SwordState
 
 
 def grid_to_pixels(i: int) -> int:
@@ -39,6 +40,8 @@ class GameView(arcade.View):
     spinner_sprites: arcade.SpriteList[arcade.TextureAnimationSprite]
     boomerang: Boomerang
     boomerang_list: arcade.SpriteList[arcade.TextureAnimationSprite]
+    sword : Sword
+    sword_list : arcade.SpriteList[arcade.TextureAnimationSprite]
     physics_engine: Final[arcade.PhysicsEngineSimple]
     camera: Final[arcade.camera.Camera2D]
     ui_camera: Final[arcade.camera.Camera2D]
@@ -89,10 +92,16 @@ class GameView(arcade.View):
             center_x=grid_to_pixels(self.map.player_start_x),
             center_y=grid_to_pixels(self.map.player_start_y),
         )
+        self.sword = Sword(
+            center_x=grid_to_pixels(self.map.player_start_x),
+            center_y=grid_to_pixels(self.map.player_start_y),
+        )
 
         # Même idée que pour le joueur : je le mets dans une liste de sprites.
         self.boomerang_list = arcade.SpriteList()
         self.boomerang_list.append(self.boomerang)
+        self.sword_list= arcade.SpriteList()
+        self.sword_list.append(self.sword)
 
         # =========================
         # Création du décor et des objets du monde
@@ -260,6 +269,10 @@ class GameView(arcade.View):
                 self.up = True
             case arcade.key.DOWN:
                 self.down = True
+
+            case arcade.key.R:
+                if not self.sword.state==SwordState.ACTIVE and self.boomerang.state==BoomerangState.INACTIVE:
+
 
             case arcade.key.D:
                 # Le boomerang ne peut être lancé que s'il est actuellement inactif.

@@ -101,4 +101,12 @@ ANIMATION_BOOMERANG: Final[arcade.TextureAnimation] = _load_animation_strip(
     frame_duration=25
 )
 
+DIRECTIONS = ["up","down","left","right"]
+ANIMATION_SWORD: Final [dict[str, arcade.TextureAnimation]]={}
+for direction in DIRECTIONS :
+    ANIMATION_SWORD[direction]= _load_animation_strip(f"assets/Top_Down_Adventure_Pack_v.1.0/Char_Sprites/char_attack48_{direction}_anim_strip_6.png",
+    6,
+    frame_duration=50,
+    tile_size=(48,48),
+    )
 SOUND_COIN = arcade.load_sound(":resources:sounds/coin5.wav")
