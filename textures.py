@@ -1,5 +1,6 @@
 from typing import Final
 import arcade
+from player import Direction
 
 ORIG_TILE_SIZE = (16, 16)
 
@@ -101,12 +102,26 @@ ANIMATION_BOOMERANG: Final[arcade.TextureAnimation] = _load_animation_strip(
     frame_duration=25
 )
 
-DIRECTIONS = ["up","down","left","right"]
-ANIMATION_SWORD: Final [dict[str, arcade.TextureAnimation]]={}
-for direction in DIRECTIONS :
-    ANIMATION_SWORD[direction]= _load_animation_strip(f"assets/Top_Down_Adventure_Pack_v.1.0/Char_Sprites/char_attack48_{direction}_anim_strip_6.png",
-    6,
-    frame_duration=50,
-    tile_size=(48,48),
-    )
+ANIMATION_SWORD: Final [dict[Direction, arcade.TextureAnimation]]={
+    Direction.NORTH : _load_animation_strip("assets/Top_Down_Adventure_Pack_v.1.0/Char_Sprites/char_attack48_up_anim_strip_6.png",
+        6,
+        frame_duration=50,
+        tile_size=(48, 48),
+    ),
+    Direction.SOUTH : _load_animation_strip("assets/Top_Down_Adventure_Pack_v.1.0/Char_Sprites/char_attack48_down_anim_strip_6.png",
+        6,
+        frame_duration=50,
+        tile_size=(48, 48),
+    ),
+    Direction.WEST : _load_animation_strip("assets/Top_Down_Adventure_Pack_v.1.0/Char_Sprites/char_attack48_left_anim_strip_6.png",
+        6,
+        frame_duration=50,
+        tile_size=(48, 48),
+    ),
+    Direction.EAST : _load_animation_strip("assets/Top_Down_Adventure_Pack_v.1.0/Char_Sprites/char_attack48_right_anim_strip_6.png",
+        6,
+        frame_duration=50,
+        tile_size=(48, 48),
+    ),
+}
 SOUND_COIN = arcade.load_sound(":resources:sounds/coin5.wav")

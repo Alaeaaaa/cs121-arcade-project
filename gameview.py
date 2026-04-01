@@ -10,6 +10,7 @@ from spinner import create_spinners, Direction as SpinnerDirection, Spinner
 from player import Player, Direction
 from boomerang import Boomerang, BoomerangState
 from sword import Sword, SwordState
+from enum import Enum
 
 
 def grid_to_pixels(i: int) -> int:
@@ -20,6 +21,9 @@ def grid_to_pixels(i: int) -> int:
     """
     return i * TILE_SIZE + (TILE_SIZE // 2)
 
+class ActiveWeapon(Enum):
+    BOOMERANG = 1
+    SWORD = 2
 
 class GameView(arcade.View):
     """Main in-game view."""
@@ -38,6 +42,7 @@ class GameView(arcade.View):
     score: int
     spinners: list[Spinner]
     spinner_sprites: arcade.SpriteList[arcade.TextureAnimationSprite]
+    active_weapon : ActiveWeapon
     boomerang: Boomerang
     boomerang_list: arcade.SpriteList[arcade.TextureAnimationSprite]
     sword : Sword
@@ -97,11 +102,14 @@ class GameView(arcade.View):
             center_y=grid_to_pixels(self.map.player_start_y),
         )
 
-        # Même idée que pour le joueur : je le mets dans une liste de sprites.
+        # Même idée que pour le joueur : je mets dans une liste de sprites le boomerang et l'épée
         self.boomerang_list = arcade.SpriteList()
         self.boomerang_list.append(self.boomerang)
         self.sword_list= arcade.SpriteList()
         self.sword_list.append(self.sword)
+
+        # l'arme active au début est le boomerang, c'est cebque je précise ici :
+         self.active_weapon = ActiveWeapon.BOOMERANG
 
         # =========================
         # Création du décor et des objets du monde
@@ -240,6 +248,8 @@ class GameView(arcade.View):
             # Donc au début il n'apparaît pas.
             if self.boomerang.state != BoomerangState.INACTIVE:
                 self.boomerang_list.draw()
+            if self.sword.state == SwordState.ACTIVE :
+                self.sword_list.draw()
 
         # =========================
         # Dessin de l'interface
@@ -269,25 +279,50 @@ class GameView(arcade.View):
                 self.up = True
             case arcade.key.DOWN:
                 self.down = True
-
+            # je code ma touche R :
             case arcade.key.R:
-                if not self.sword.state==SwordState.ACTIVE and self.boomerang.state==BoomerangState.INACTIVE:
+                # je limite son usage à : les deux armes sont inactives, pour éviter un changement alors quye le boomerang est en plein vol par exemple
+                if self.boomerang.state==BoomerangState.INACTIVE and self.sword.state==SwordState.INACTIVE :
+                    # le changement se fait naturellement d'une arme à l'autre :
+                    if self.active_weapon == ActiveWeapon.BOOMERANG :
+                        self.active_weapon = ActiveWeapon.SWORD
+                    else :
+                        self.active_weapon = ActiveWeapon.BOOMERANG
 
 
             case arcade.key.D:
-                # Le boomerang ne peut être lancé que s'il est actuellement inactif.
-                if self.boomerang.state == BoomerangState.INACTIVE:
-                    # Il passe à l'état LAUNCHING
-                    self.boomerang.state = BoomerangState.LAUNCHING
+                if self.active_weapon== ActiveWeapon.BOOMERANG :
+                    # Le boomerang ne peut être lancé que s'il est actuellement inactif.
+                    if self.boomerang.state == BoomerangState.INACTIVE:
+                        # Il passe à l'état LAUNCHING
+                        self.boomerang.state = BoomerangState.LAUNCHING
 
-                    # Il part depuis la position actuelle du joueur
-                    self.boomerang.position = self.player.position
+                        # Il part depuis la position actuelle du joueur
+                        self.boomerang.position = self.player.position
 
-                    # Il part dans la direction dans laquelle regarde le joueur
-                    self.boomerang.direction = self.player.direction
+                        # Il part dans la direction dans laquelle regarde le joueur
+                        self.boomerang.direction = self.player.direction
 
-                    # Je remets la distance parcourue à zéro pour ce nouveau lancer
-                    self.boomerang.distance_travelled = 0
+                        # Je remets la distance parcourue à zéro pour ce nouveau lancer
+                        self.boomerang.distance_travelled = 0
+                elif self.active_weapon == ActiveWeapon.SWORD :
+                    # L'épée ne peut être utilisée que si elle est actuellement inactive ET le boomerang aussi :
+                    if self.sword.state == SwordState.INACTIVE and self.boomerang.state== BoomerangState.INACTIVE :
+
+                        # elle se situe à la position actuelle du joueur
+                        self.sword.position = self.player.position
+
+                        # elle est orientée selon la direction dans laquelle regarde le joueur
+                        self.sword.direction = self.player.direction
+
+                        # je dois mettre à jour l'animation selon la nouvelle direction :
+                        self.sword.update_direction_animation()
+
+                        # elle passe à l'état actif :
+                        self.sword.state = SwordState.ACTIVE
+
+                        # Je remets le temps écoulé à 0 :
+                        self.sword.time = 0
 
             case arcade.key.ESCAPE:
                 # Permet de relancer la partie
@@ -454,6 +489,37 @@ class GameView(arcade.View):
             if len(colliding_spinners_with_boomerang) > 0:
                 for spinner_sprite in colliding_spinners_with_boomerang:
                     self._remove_spinner_sprite(spinner_sprite)
+
+        # =========================
+        # Gestion de l'épée :
+        # =========================
+        if self.sword.state == SwordState.ACTIVE :
+            # l'épée est centrée sur le joueur :
+            self.sword.position = self.player.position
+            #je fais avancer son aniumation :
+            self.sword.update_animation()
+            #je mets à jour le ctemps écoulé deouis le début de l'attaque :
+            self.sword.time+=delta_time
+            # si le temps écoulé dépasse : 6 x 50ms = 300 ms -> 0.3, l'attaque est achevée :
+            if self.sword.time >= 0.3 :
+                self.sword.state= SwordState.INACTIVE
+                self.sword.time=0
+
+            # gestion des collisions : épée et spinners :
+            colliding_spinners_with_sword = arcade.check_for_collision_with_list(
+                self.sword, self.spinner_sprites
+            )
+            for spinner_sprite in colliding_spinners_with_sword :
+                self._remove_spinner_sprite(spinner_sprite)
+            # gestion des collisions : épée et cristaux :
+            colliding_crystals_with_sword = arcade.check_for_collision_with_list(
+                self.sword, self.crystals
+            )
+            for crystal in colliding_crystals_with_sword :
+                crystal.remove_from_sprite_lists()
+                arcade.play_sound(SOUND_COIN)
+                self.score+=1
+
 
         # =========================
         # Collision joueur / cristaux
