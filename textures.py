@@ -1,6 +1,6 @@
 from typing import Final
 import arcade
-from player import Direction
+from direction import Direction
 
 ORIG_TILE_SIZE = (16, 16)
 

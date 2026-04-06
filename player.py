@@ -1,15 +1,8 @@
 import arcade
-from enum import Enum
 from textures import *
 
 from constants import PLAYER_MOVEMENT_SPEED
-
-class Direction(Enum):
-    NORTH = 1
-    EAST = 2
-    SOUTH = 3
-    WEST = 4
-
+from direction import Direction
 
 
 class Player(arcade.TextureAnimationSprite):

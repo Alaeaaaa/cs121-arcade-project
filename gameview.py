@@ -7,7 +7,8 @@ from textures import *
 
 from map import Map, GridCell
 from spinner import create_spinners, Direction as SpinnerDirection, Spinner
-from player import Player, Direction
+from player import Player
+from direction import Direction
 from boomerang import Boomerang, BoomerangState
 from sword import Sword, SwordState
 from enum import Enum
@@ -109,7 +110,7 @@ class GameView(arcade.View):
         self.sword_list.append(self.sword)
 
         # l'arme active au début est le boomerang, c'est cebque je précise ici :
-         self.active_weapon = ActiveWeapon.BOOMERANG
+        self.active_weapon = ActiveWeapon.BOOMERANG
 
         # =========================
         # Création du décor et des objets du monde
