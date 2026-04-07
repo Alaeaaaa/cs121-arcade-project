@@ -83,3 +83,58 @@ Nous avons eu quelques problèmes avec l’import du son `SOUND_COIN` et avec le
 Pour les spinners, la partie la plus difficile était de comprendre comment calculer correctement leurs limites de déplacement uniquement à partir de la map.
 
 Pour le boomerang, la partie la plus difficile était de gérer correctement les différents états (`INACTIVE`, `LAUNCHING`, `RETURNING`) et de faire revenir le boomerang vers le joueur même lorsque celui-ci se déplace.
+
+## semaine 5 :
+
+Temps de travail : environ 2h.
+
+Nous avons ajouté une nouvelle fonctionnalité du joueur : **le sword**
+
+Pour cela, nous avond procédé comme suit:
+
+- création du fichier `sword.py`
+- définition d'une nouvelle classe  :
+`Enum` `SwordState` pour déterminer si l'épée est effectivement l'arme active : `INACTIVE` et `ACTIVE`
+- créé une classe `Sword` qui hérite de `TextureAnimationSprite`
+- ajouté l'animation de l'épée à `textures.py`
+
+**Difficultés**
+
+Même avec l'existence de la classe Boomerang, nous avons eu quelques difficultés à construire la classe Sword en prenant en compte tous ses attributs.
+
+Par ailleurs, il était assez compliqué de coder les animations de l'épée de façon "élégante" et de les stocker dans une seule structure : un dictionnaire.
+
+## semaine 6 :
+
+Temps de travail : environ 7 heures.
+
+Cette semaine s'est révélée plus fatstidieuse que prévue car nous avons du terminer la construction de la classe Sword et son implémentation dans Gameview + la création des **chauve-souris**, nous avons donc :
+
+- ajouté l'épée à Gameview
+- codé la nouvelle touche `R`pour le changement d'ames
+- modifié le code de la touche `D` pour inclure le comportment de l'épée
+- ajouté un nouvel attribut :`active_weapon`et de l' `Enum` qui la représente : `ActiveWeapon` pour pouvoir passer du boomerang à l'épée plus facilement.
+- ajouté la collision entre l'épée et les crystaux
+- ajouté la collision entre l'épée et les spinners
+
+nous avons également ajouté la nouvelle classe de monstres : **les chauves-souris**.
+Pour cela, nous avons :
+
+- ajouté les cellules `BAT` dans la map
+- ajouté l'animation des chauve-souris dans `textures.py`
+- créé le fichier `bat.py`
+- ajouté une nouvelle classe `BatBounds` pour déterminer les limites de mvt des chauve-souris
+- ajouté une nouvelle classe `Bat` pour représenter les chauve-souris, fortement inspiré de la classe `Spinner`
+- ajouté une fonction pour calculer leurs limites de déplacement
+- ajouté une fonction pour créer les chauves-souris à partir de leur position sur la map
+- ajouté leurs sprites dans `gameview.py`
+- impléménté leurs déplacements dans des directions "semi-aléatoires" dans les limites de leur zone d'action
+- ajouté leur collisions avec le boomerang, l'épée, et le joueur.
+
+**Difficultés**
+
+L'ajout de l'icône des armes est un aspect assez difficile à aborder, en particulier quand on ignore la majorité des commandes de la caméra d'arcade.
+
+L'ajout des commandes de la touche `R` en tenant compte des deux armes a pris du temps, et la modification de la touche `D` pour inclure les commandes de l'épée également.
+
+La délimitation de la zone d'action des chauves-souris ET SURTOUT la mise à jour de leur direction, EN VEILLANT à ne pas dépasser les limites de la zone est ce qui a pris le plus de temps.

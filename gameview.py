@@ -11,6 +11,7 @@ from player import Player
 from direction import Direction
 from boomerang import Boomerang, BoomerangState
 from sword import Sword, SwordState
+from bat import *
 from enum import Enum
 
 
@@ -183,6 +184,23 @@ class GameView(arcade.View):
                 center_y=grid_to_pixels(spinner.y),
             )
             self.spinner_sprites.append(sprite)
+        # =========================
+        # Création des chauve-souris
+        # =========================
+        # Ici create_bats(self.map) crée la partie logique des bats
+        # (leur position, leur direction, leurs limites, etc.)
+        self.val = random.Random(None)
+        self.bats = create_bats(self.map, self.val)
+        # Ensuite, je crée la partie visuelle : sprites.
+        self.bat_sprites = arcade.SpriteList()
+        for bat in self.bats :
+            bat_sprite = arcade.TextureAnimationSprite(
+                animation = ANIMATION_BAT,
+                scale= SCALE,
+                center_x=grid_to_pixels(bat.start_x),
+                center_y=grid_to_pixels(bat.start_y),
+            )
+            self.bat_sprites.append(bat_sprite)
 
         # =========================
         # État du clavier
@@ -206,8 +224,8 @@ class GameView(arcade.View):
 
     def _remove_spinner_sprite(self, spinner_sprite: arcade.Sprite) -> None:
         """
-        Cette fonction enlève un spinner à la fois du visuel et de la logique.
-        J'en ai besoin quand le boomerang tue un spinner.
+        Cette méthode enlève un spinner à la fois du visuel et de la logique.
+        J'en ai besoin quand une arme tue un spinner.
 
         Pourquoi enlever dans les deux listes ?
         - self.spinner_sprites = partie affichée
@@ -218,6 +236,22 @@ class GameView(arcade.View):
             if sprite == spinner_sprite:
                 self.spinner_sprites.pop(i)
                 self.spinners.pop(i)
+                return
+
+    def _remove_bat_sprite (self, bat_sprite : arcade.TextureAnimationSprite):
+        """
+        Cette méthode enlève une chauve-souris à la fois du visuel et de la logique.
+        J'en ai besoin quand une arme en tue une.
+
+        Pourquoi enlever dans les deux listes ?
+        - self.bat_sprites = partie affichée
+        - self.bats = partie logique
+        Si j'enlevais seulement le sprite, j'aurais un décalage entre les deux.
+        """
+        for i, sprite in enumerate(self.bat_sprites):
+            if sprite == bat_sprite:
+                self.bat_sprites.pop(i)
+                self.bats.pop(i)
                 return
 
     def on_show_view(self) -> None:
@@ -244,6 +278,7 @@ class GameView(arcade.View):
             self.player_list.draw()
             self.crystals.draw()
             self.spinner_sprites.draw()
+            self.bat_sprites.draw()
 
             # Le boomerang n'est dessiné que s'il n'est pas inactif.
             # Donc au début il n'apparaît pas.
@@ -417,6 +452,59 @@ class GameView(arcade.View):
                     if sprite.center_y <= grid_to_pixels(spinner.limites.min_y):
                         sprite.center_y = grid_to_pixels(spinner.limites.min_y)
                         spinner.direction = SpinnerDirection.POSITIF
+        # =========================
+        # Déplacement des chauve-souris
+        # =========================
+        # Ici je fais avancer chaque chauve-souris entre ses limites, à vitesse constante.
+        # Il arrive qu'elle modifie sa direction aléatoirement (comme demandé) pour simuler un mvt naturel.
+        # si elle atteint les limites du rectangle d'action, elle rebondit et changeant de direction, à l'interieur
+        # de la zone d'action toujours.
+
+        # je choisis de parcourir la longueur de la liste, car la liste logique et visuelle ont la mm longueur,
+        # de cette façon je parcours les deux en meme temps.
+        for i in range(len(self.bats)):
+            bat= self.bats[i]
+            bat_sprite = self.bat_sprites[i]
+            # je mets à jour son animation :
+            bat_sprite.update_animation()
+            # et donc, comme j'avance d'un frame, j'actualise leur compteur :
+            bat.frames_direction_change -=1
+            # dès qu'il ne reste plus de frames avant changement, on change de direction :
+            if bat.frames_direction_change <= 0 :
+                # je modifie légèrement l'angle
+                bat.angle+=self.val.uniform(-0.5,0.5)
+                # je remets le compteu rde frames à son état initial :
+                bat.frames_direction_change = BAT_DIRECTION_CHANGE
+            # à présent, je dois calculer le déplacement en fonction de l'angle et de la vitesse
+            # c'est simplement des maths, on emploie des cosinus (horizontal) et des sinus (vertical) comme suit :
+            dx = bat.speed*math.cos(bat.angle)
+            dy = bat.speed*math.sin(bat.angle)
+            # la nouvelle position ainsi caclulée est :
+            new_x = bat_sprite.center_x + dx
+            new_y = bat_sprite.center_y + dy
+            # le problème : on ne sait pas si on sort de la zone, j'y remédie donc comme suit :
+            # d'abord, je convertis les limites de la zone d'action en pixels pour pouvoir comparer :
+            min_x = grid_to_pixels(bat.bounds.min_x)
+            min_y = grid_to_pixels(bat.bounds.min_y)
+            max_x = grid_to_pixels(bat.bounds.max_x)
+            max_y = grid_to_pixels(bat.bounds.max_y)
+            # la première exception est que la nouvelle position horizontale (new_x) est en dehors de l'intervalle :
+            if new_x<min_x or new_x >max_x :
+                # trigonométrie : la chauve-souris repartira dans l'autre sens par inversion du signe du cos
+                bat.angle = math.pi - bat.angle
+                new_x = bat_sprite.center_x + bat.speed*math.cos(bat.angle)
+                new_y = bat_sprite.center_y + bat.speed*math.sin(bat.angle)
+            # il reste à vérifier la même chose mais verticalement :
+            if new_y < min_y or new_y > max_y :
+                # encore une fois, c'est de la trigo, il faut qu'on inverse le signe du sin mais garder le cos qui est bon.
+                bat.angle = - bat.angle
+                new_x = bat_sprite.center_x + bat.speed*math.cos(bat.angle)
+                new_y = bat_sprite.center_y + bat.speed*math.sin(bat.angle)
+            # maintenant qu'on a tout vérifié, on peut mettre à jour la position de la chauve-souris :
+            bat_sprite.center_x = new_x
+            bat_sprite.center_y = new_y
+
+
 
         # =========================
         # Gestion du boomerang : phase de lancement
@@ -447,13 +535,23 @@ class GameView(arcade.View):
             if len(colliding_walls) > 0:
                 self.boomerang.state = BoomerangState.RETURNING
 
-            # S'il touche un spinner pendant le lancement :
-            # - le spinner meurt
+            # S'il touche un monstre pendant le lancement :
+            # - le monstre meurt
             # - le boomerang repart en retour
             colliding_spinners_with_boomerang = arcade.check_for_collision_with_list(
                 self.boomerang, self.spinner_sprites
             )
-            if len(colliding_spinners_with_boomerang) > 0:
+            colliding_bats_with_boomerang = arcade.check_for_collision_with_list(
+                self.boomerang, self.bat_sprites
+            )
+            # attention aux monstres : si le boomerang en touche un, il doit retourner !
+            # j'utilise donc if/elif comme ça il retourne dès qu'il en touche un (soit bat, soit spinner, pas les deux)
+            if len(colliding_bats_with_boomerang) > 0:
+                for bat_sprite in colliding_bats_with_boomerang:
+                    self._remove_bat_sprite(bat_sprite)
+                self.boomerang.state = BoomerangState.RETURNING
+
+            elif len(colliding_spinners_with_boomerang) > 0:
                 for spinner_sprite in colliding_spinners_with_boomerang:
                     self._remove_spinner_sprite(spinner_sprite)
                 self.boomerang.state = BoomerangState.RETURNING
@@ -483,10 +581,16 @@ class GameView(arcade.View):
                 self.boomerang.center_y += 8 * dy / distance
 
             # Pendant le retour, le boomerang traverse les murs,
-            # mais il continue de tuer les spinners qu'il touche.
+            # mais il continue de tuer les monstres qu'il touche.
+            colliding_bats_with_boomerang = arcade.check_for_collision_with_list(
+                self.boomerang, self.bat_sprites
+            )
             colliding_spinners_with_boomerang = arcade.check_for_collision_with_list(
                 self.boomerang, self.spinner_sprites
             )
+            if len(colliding_bats_with_boomerang) > 0:
+                for bat_sprite in colliding_bats_with_boomerang:
+                    self._remove_bat_sprite(bat_sprite)
             if len(colliding_spinners_with_boomerang) > 0:
                 for spinner_sprite in colliding_spinners_with_boomerang:
                     self._remove_spinner_sprite(spinner_sprite)
@@ -512,6 +616,14 @@ class GameView(arcade.View):
             )
             for spinner_sprite in colliding_spinners_with_sword :
                 self._remove_spinner_sprite(spinner_sprite)
+
+            # gestion des collisions : épée et chauve-souris :
+            colliding_bats_with_sword = arcade.check_for_collision_with_list(
+                self.sword, self.bat_sprites
+            )
+            for bat_sprite in colliding_bats_with_sword:
+                self._remove_bat_sprite(bat_sprite)
+
             # gestion des collisions : épée et cristaux :
             colliding_crystals_with_sword = arcade.check_for_collision_with_list(
                 self.sword, self.crystals
@@ -542,6 +654,17 @@ class GameView(arcade.View):
         colliding_spinners = arcade.check_for_collision_with_list(self.player, self.spinner_sprites)
         if len(colliding_spinners) > 0:
             new_view = GameView(self.map)
+            self.window.show_view(new_view)
+            return
+        # =========================
+        # Collision joueur / bats
+        # =========================
+        # Si le joueur touche une chauve-souris, on reset la partie.
+        colliding_bats = arcade.check_for_collision_with_list(
+            self.player, self.bat_sprites
+        )
+        if len(colliding_bats)>0 :
+            new_view= GameView(self.map)
             self.window.show_view(new_view)
             return
 

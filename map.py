@@ -10,6 +10,7 @@ class GridCell(Enum):
     SPINNER_HORIZONTAL = 4
     SPINNER_VERTICAL = 5
     HOLE = 6
+    BAT = 7
 
 
 class Map:
@@ -140,6 +141,10 @@ def map_from_string(text: str) -> Map:
             # S = spinner vertical
             elif char == "S":
                 row.append(GridCell.SPINNER_VERTICAL)
+
+            # v = chauve souris
+            elif char== "v":
+                row.append(GridCell.BAT)
 
             # P = position de départ du joueur
             elif char == "P":

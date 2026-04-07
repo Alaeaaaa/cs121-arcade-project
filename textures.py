@@ -124,4 +124,7 @@ ANIMATION_SWORD: Final [dict[Direction, arcade.TextureAnimation]]={
         tile_size=(48, 48),
     ),
 }
+ANIMATION_BAT : Final[arcade.TextureAnimation]=_load_animation_strip(
+    "assets/Top_Down_Adventure_Pack_v.1.0/Enemies_Sprites/Pinkbat_Sprites/pinkbat_idle_left_anim_strip_5.png",
+    5)
 SOUND_COIN = arcade.load_sound(":resources:sounds/coin5.wav")
