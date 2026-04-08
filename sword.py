@@ -1,8 +1,9 @@
 import arcade
 from enum import Enum
 from textures import *
-from player import Direction
+from direction import Direction
 from constants import SCALE
+
 class SwordState(Enum):
     INACTIVE=1
     ACTIVE=2
