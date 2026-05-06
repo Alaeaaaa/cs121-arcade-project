@@ -1,18 +1,27 @@
+from __future__ import annotations
+
 from typing import Final
+
 import arcade
 
 from direction import Direction
 
 
-# Taille d'une image dans la plupart des spritesheets.
+# ==================================================
+# Chemins vers les assets
+# ==================================================
+
 ORIG_TILE_SIZE: Final[tuple[int, int]] = (16, 16)
 
-# Chemins de base pour éviter de répéter les longs chemins.
 ASSET_ROOT: Final[str] = "assets/Top_Down_Adventure_Pack_v.1.0"
 CHAR_SPRITES: Final[str] = f"{ASSET_ROOT}/Char_Sprites"
 ENEMY_SPRITES: Final[str] = f"{ASSET_ROOT}/Enemies_Sprites"
 ITEM_SPRITES: Final[str] = f"{ASSET_ROOT}/Props_Items_(animated)"
 
+
+# ==================================================
+# Fonctions utilitaires de chargement
+# ==================================================
 
 def _load_grid(
     file: str,
@@ -20,9 +29,13 @@ def _load_grid(
     rows: int,
     tile_size: tuple[int, int] = ORIG_TILE_SIZE,
 ) -> list[arcade.Texture]:
-    # Charge une grande image puis la découpe en petites textures.
     spritesheet = arcade.load_spritesheet(file)
-    return spritesheet.get_texture_grid(tile_size, columns, columns * rows)
+
+    return spritesheet.get_texture_grid(
+        tile_size,
+        columns,
+        columns * rows,
+    )
 
 
 def _load_animation_strip(
@@ -31,10 +44,13 @@ def _load_animation_strip(
     frame_duration: int = 100,
     tile_size: tuple[int, int] = ORIG_TILE_SIZE,
 ) -> arcade.TextureAnimation:
-    # Une animation strip est une ligne de frames.
-    grid = _load_grid(file, columns=frame_count, rows=1, tile_size=tile_size)
+    grid = _load_grid(
+        file,
+        columns=frame_count,
+        rows=1,
+        tile_size=tile_size,
+    )
 
-    # Une keyframe = une image + sa durée d'affichage.
     keyframes = [
         arcade.TextureKeyframe(frame, frame_duration)
         for frame in grid
@@ -43,8 +59,10 @@ def _load_animation_strip(
     return arcade.TextureAnimation(keyframes)
 
 
-def _load_player_animation(action: str, direction: str) -> arcade.TextureAnimation:
-    # Exemple : char_run_down_anim_strip_6.png
+def _load_player_animation(
+    action: str,
+    direction: str,
+) -> arcade.TextureAnimation:
     return _load_animation_strip(
         f"{CHAR_SPRITES}/char_{action}_{direction}_anim_strip_6.png",
         frame_count=6,
@@ -52,7 +70,6 @@ def _load_player_animation(action: str, direction: str) -> arcade.TextureAnimati
 
 
 def _load_sword_animation(direction: str) -> arcade.TextureAnimation:
-    # L'attaque utilise des frames 48x48 car elles incluent joueur + épée.
     return _load_animation_strip(
         f"{CHAR_SPRITES}/char_attack48_{direction}_anim_strip_6.png",
         frame_count=6,
@@ -61,9 +78,9 @@ def _load_sword_animation(direction: str) -> arcade.TextureAnimation:
     )
 
 
-# ---------------------------------------------------------
-# Textures fixes
-# ---------------------------------------------------------
+# ==================================================
+# Tilesets
+# ==================================================
 
 _overworld_grid = _load_grid(
     f"{ASSET_ROOT}/Overworld_Tileset.png",
@@ -71,17 +88,60 @@ _overworld_grid = _load_grid(
     rows=13,
 )
 
-# index = y * columns + x, ici columns = 18.
+_dungeon_grid = _load_grid(
+    f"{ASSET_ROOT}/Dungeon_Tileset.png",
+    columns=13,
+    rows=12,
+)
+
+
+# ==================================================
+# Textures de terrain
+# ==================================================
+
 TEXTURE_GRASS: Final[arcade.Texture] = _overworld_grid[18 * 1 + 6]
 TEXTURE_BUSH: Final[arcade.Texture] = _overworld_grid[18 * 3 + 5]
 TEXTURE_HOLE: Final[arcade.Texture] = _overworld_grid[18 * 4 + 8]
 
 
-# ---------------------------------------------------------
-# Directions
-# ---------------------------------------------------------
+# ==================================================
+# Textures des interrupteurs EPFL
+# ==================================================
+# L'énoncé demande ces deux ressources Arcade :
+#
+# off : ":resources:/images/tiles/leverLeft.png"
+# on  : ":resources:/images/tiles/leverRight.png"
+#
+# Elles font 128x128, donc dans GameView on utilise scale=0.25.
 
-# Relie notre Direction au mot utilisé dans les noms des fichiers.
+TEXTURE_SWITCH_OFF: Final[arcade.Texture] = arcade.load_texture(
+    ":resources:/images/tiles/leverLeft.png"
+)
+
+TEXTURE_SWITCH_ON: Final[arcade.Texture] = arcade.load_texture(
+    ":resources:/images/tiles/leverRight.png"
+)
+
+
+# ==================================================
+# Textures des portails EPFL
+# ==================================================
+# L'énoncé demande le Dungeon_Tileset en grille 13x12.
+#
+# Portail ouvert  : élément (4, 8)
+# Portail fermé  : élément (7, 8)
+#
+# Ici on utilise la formule :
+# index = columns * row + column
+
+TEXTURE_GATE_OPEN: Final[arcade.Texture] = _dungeon_grid[13 * 8 + 4]
+TEXTURE_GATE_CLOSED: Final[arcade.Texture] = _dungeon_grid[13 * 8 + 7]
+
+
+# ==================================================
+# Directions
+# ==================================================
+
 DIRECTION_NAMES: Final[dict[Direction, str]] = {
     Direction.SOUTH: "down",
     Direction.NORTH: "up",
@@ -90,11 +150,10 @@ DIRECTION_NAMES: Final[dict[Direction, str]] = {
 }
 
 
-# ---------------------------------------------------------
-# Joueur
-# ---------------------------------------------------------
+# ==================================================
+# Animations du joueur
+# ==================================================
 
-# Factorisation : on génère les animations avec une boucle sur les directions.
 PLAYER_IDLE_ANIMATIONS: Final[dict[Direction, arcade.TextureAnimation]] = {
     direction: _load_player_animation("idle", file_direction)
     for direction, file_direction in DIRECTION_NAMES.items()
@@ -105,21 +164,37 @@ PLAYER_RUN_ANIMATIONS: Final[dict[Direction, arcade.TextureAnimation]] = {
     for direction, file_direction in DIRECTION_NAMES.items()
 }
 
-# Anciens noms gardés pour ne pas casser le reste du code.
-ANIMATION_PLAYER_IDLE_DOWN: Final[arcade.TextureAnimation] = PLAYER_IDLE_ANIMATIONS[Direction.SOUTH]
-ANIMATION_PLAYER_IDLE_UP: Final[arcade.TextureAnimation] = PLAYER_IDLE_ANIMATIONS[Direction.NORTH]
-ANIMATION_PLAYER_IDLE_LEFT: Final[arcade.TextureAnimation] = PLAYER_IDLE_ANIMATIONS[Direction.WEST]
-ANIMATION_PLAYER_IDLE_RIGHT: Final[arcade.TextureAnimation] = PLAYER_IDLE_ANIMATIONS[Direction.EAST]
 
-ANIMATION_PLAYER_RUN_DOWN: Final[arcade.TextureAnimation] = PLAYER_RUN_ANIMATIONS[Direction.SOUTH]
-ANIMATION_PLAYER_RUN_UP: Final[arcade.TextureAnimation] = PLAYER_RUN_ANIMATIONS[Direction.NORTH]
-ANIMATION_PLAYER_RUN_LEFT: Final[arcade.TextureAnimation] = PLAYER_RUN_ANIMATIONS[Direction.WEST]
-ANIMATION_PLAYER_RUN_RIGHT: Final[arcade.TextureAnimation] = PLAYER_RUN_ANIMATIONS[Direction.EAST]
+ANIMATION_PLAYER_IDLE_DOWN: Final[arcade.TextureAnimation] = PLAYER_IDLE_ANIMATIONS[
+    Direction.SOUTH
+]
+ANIMATION_PLAYER_IDLE_UP: Final[arcade.TextureAnimation] = PLAYER_IDLE_ANIMATIONS[
+    Direction.NORTH
+]
+ANIMATION_PLAYER_IDLE_LEFT: Final[arcade.TextureAnimation] = PLAYER_IDLE_ANIMATIONS[
+    Direction.WEST
+]
+ANIMATION_PLAYER_IDLE_RIGHT: Final[arcade.TextureAnimation] = PLAYER_IDLE_ANIMATIONS[
+    Direction.EAST
+]
+
+ANIMATION_PLAYER_RUN_DOWN: Final[arcade.TextureAnimation] = PLAYER_RUN_ANIMATIONS[
+    Direction.SOUTH
+]
+ANIMATION_PLAYER_RUN_UP: Final[arcade.TextureAnimation] = PLAYER_RUN_ANIMATIONS[
+    Direction.NORTH
+]
+ANIMATION_PLAYER_RUN_LEFT: Final[arcade.TextureAnimation] = PLAYER_RUN_ANIMATIONS[
+    Direction.WEST
+]
+ANIMATION_PLAYER_RUN_RIGHT: Final[arcade.TextureAnimation] = PLAYER_RUN_ANIMATIONS[
+    Direction.EAST
+]
 
 
-# ---------------------------------------------------------
-# Objets et ennemis
-# ---------------------------------------------------------
+# ==================================================
+# Animations des objets et monstres
+# ==================================================
 
 ANIMATION_CRYSTAL: Final[arcade.TextureAnimation] = _load_animation_strip(
     f"{ITEM_SPRITES}/crystal_item_anim_strip_6.png",
@@ -136,21 +211,16 @@ ANIMATION_BAT: Final[arcade.TextureAnimation] = _load_animation_strip(
     frame_count=5,
 )
 
-
-# ---------------------------------------------------------
-# Boomerang
-# ---------------------------------------------------------
-
 ANIMATION_BOOMERANG: Final[arcade.TextureAnimation] = _load_animation_strip(
     "assets/provided/boomerang-sheet.png",
     frame_count=8,
-    frame_duration=25,  # Animation plus rapide.
+    frame_duration=25,
 )
 
 
-# ---------------------------------------------------------
-# Épée
-# ---------------------------------------------------------
+# ==================================================
+# Animations de l'épée
+# ==================================================
 
 ANIMATION_SWORD: Final[dict[Direction, arcade.TextureAnimation]] = {
     direction: _load_sword_animation(file_direction)
@@ -158,8 +228,10 @@ ANIMATION_SWORD: Final[dict[Direction, arcade.TextureAnimation]] = {
 }
 
 
-# ---------------------------------------------------------
-# Son
-# ---------------------------------------------------------
+# ==================================================
+# Sons
+# ==================================================
 
-SOUND_COIN: Final[arcade.Sound] = arcade.load_sound(":resources:sounds/coin5.wav")
+SOUND_COIN: Final[arcade.Sound] = arcade.load_sound(
+    ":resources:sounds/coin5.wav"
+)

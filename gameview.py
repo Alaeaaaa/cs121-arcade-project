@@ -22,8 +22,12 @@ from textures import (
     ANIMATION_SPINNER,
     SOUND_COIN,
     TEXTURE_BUSH,
+    TEXTURE_GATE_CLOSED,
+    TEXTURE_GATE_OPEN,
     TEXTURE_GRASS,
     TEXTURE_HOLE,
+    TEXTURE_SWITCH_OFF,
+    TEXTURE_SWITCH_ON,
 )
 
 from map import GridCell, Map
@@ -33,10 +37,19 @@ from player import Player
 from spinner import Direction as SpinnerDirection
 from spinner import Spinner, create_spinners
 
-from bat import BAT_DIRECTION_CHANGE, Bat, create_bats
+from bat import Bat, create_bats
 
 from navmesh import NavMesh, create_navmesh
-from slime import Slime, create_slimes, update_slime_random_movement
+from slime import Slime, create_slimes, update_slime_movement
+
+from switch import (
+    Gate,
+    Switch,
+    create_gates,
+    create_switches,
+    toggle_switch,
+    update_gates,
+)
 
 from boomerang import Boomerang, BoomerangState
 from sword import Sword, SwordState
@@ -54,10 +67,10 @@ SWORD_ATTACK_DURATION: Final[float] = 0.3
 
 HOLE_DEATH_DISTANCE: Final[int] = 16
 
+SWITCH_SCALE: Final[float] = 0.25
+
 
 def grid_to_pixels(i: int) -> int:
-    # Coordonnée de grille -> coordonnée pixel.
-    # On ajoute TILE_SIZE // 2 car Arcade place les sprites par leur centre.
     return i * TILE_SIZE + TILE_SIZE // 2
 
 
@@ -67,12 +80,6 @@ class ActiveWeapon(Enum):
 
 
 class GameView(arcade.View):
-    # GameView gère :
-    # - l'affichage
-    # - les inputs clavier
-    # - les collisions
-    # - les updates des ennemis et des armes
-
     world_width: Final[int]
     world_height: Final[int]
 
@@ -83,6 +90,12 @@ class GameView(arcade.View):
     walls: Final[arcade.SpriteList[arcade.Sprite]]
     crystals: Final[arcade.SpriteList[arcade.TextureAnimationSprite]]
     holes: Final[arcade.SpriteList[arcade.Sprite]]
+
+    switches: list[Switch]
+    switch_sprites: arcade.SpriteList[arcade.Sprite]
+
+    gates: list[Gate]
+    gate_sprites: arcade.SpriteList[arcade.Sprite]
 
     spinners: list[Spinner]
     spinner_sprites: arcade.SpriteList[arcade.TextureAnimationSprite]
@@ -117,17 +130,15 @@ class GameView(arcade.View):
         self.world_width = self.map.width * TILE_SIZE
         self.world_height = self.map.height * TILE_SIZE
 
-        # Même générateur aléatoire pour les bats et les slimes.
         self.random = random.Random(None)
 
         self._setup_player()
         self._setup_weapons()
         self._setup_world()
+        self._setup_switches_and_gates()
         self._setup_spinners()
         self._setup_bats()
 
-        # Le navmesh dépend seulement de la map.
-        # On le crée une fois, avant de créer les slimes.
         self.navmesh = create_navmesh(self.map)
         self._setup_slimes()
 
@@ -174,6 +185,24 @@ class GameView(arcade.View):
             for x in range(self.map.width):
                 self._create_cell_sprites(x, y)
 
+    def _setup_switches_and_gates(self) -> None:
+        self.switches = create_switches(self.map)
+        self.gates = create_gates(self.map, self.switches)
+
+        self.switch_sprites = arcade.SpriteList()
+        self.gate_sprites = arcade.SpriteList()
+
+        for switch in self.switches:
+            switch_sprite = self._create_switch_sprite(switch)
+            self.switch_sprites.append(switch_sprite)
+
+        for gate in self.gates:
+            gate_sprite = self._create_gate_sprite(gate)
+            self.gate_sprites.append(gate_sprite)
+
+            if not gate.is_open:
+                self.walls.append(gate_sprite)
+
     def _setup_spinners(self) -> None:
         self.spinners = create_spinners(self.map)
         self.spinner_sprites = arcade.SpriteList()
@@ -192,19 +221,16 @@ class GameView(arcade.View):
         self.bat_sprites = arcade.SpriteList()
 
         for bat in self.bats:
-            self.bat_sprites.append(
-                self._create_animated_sprite(
-                    animation=ANIMATION_BAT,
-                    x=bat.start_x,
-                    y=bat.start_y,
-                )
+            bat_sprite = arcade.TextureAnimationSprite(
+                animation=ANIMATION_BAT,
+                scale=SCALE,
+                center_x=bat.x,
+                center_y=bat.y,
             )
 
+            self.bat_sprites.append(bat_sprite)
+
     def _setup_slimes(self) -> None:
-        # Les slimes utilisent maintenant le navmesh.
-        #
-        # self.slimes = logique
-        # self.slime_sprites = affichage
         self.slimes = create_slimes(
             self.map,
             self.navmesh,
@@ -220,6 +246,7 @@ class GameView(arcade.View):
                 center_x=slime.x,
                 center_y=slime.y,
             )
+
             self.slime_sprites.append(slime_sprite)
 
     def _setup_keyboard(self) -> None:
@@ -267,7 +294,34 @@ class GameView(arcade.View):
             center_y=grid_to_pixels(y),
         )
 
+    def _create_switch_sprite(self, switch: Switch) -> arcade.Sprite:
+        if switch.is_on:
+            texture = TEXTURE_SWITCH_ON
+        else:
+            texture = TEXTURE_SWITCH_OFF
+
+        return arcade.Sprite(
+            texture,
+            scale=SWITCH_SCALE,
+            center_x=grid_to_pixels(switch.x),
+            center_y=grid_to_pixels(switch.y),
+        )
+
+    def _create_gate_sprite(self, gate: Gate) -> arcade.Sprite:
+        if gate.is_open:
+            texture = TEXTURE_GATE_OPEN
+        else:
+            texture = TEXTURE_GATE_CLOSED
+
+        return arcade.Sprite(
+            texture,
+            scale=SCALE,
+            center_x=grid_to_pixels(gate.x),
+            center_y=grid_to_pixels(gate.y),
+        )
+
     def _create_cell_sprites(self, x: int, y: int) -> None:
+        # Chaque cellule reçoit d'abord du sol.
         self.grounds.append(
             self._create_static_sprite(TEXTURE_GRASS, x, y)
         )
@@ -288,6 +342,10 @@ class GameView(arcade.View):
             self.holes.append(
                 self._create_static_sprite(TEXTURE_HOLE, x, y)
             )
+
+        # Important :
+        # SWITCH et GATE ne sont pas créés ici.
+        # Ils sont créés dans _setup_switches_and_gates.
 
     # ==================================================
     # Méthodes Arcade principales
@@ -353,9 +411,19 @@ class GameView(arcade.View):
 
     def _draw_world(self) -> None:
         self.grounds.draw()
+
+        # self.walls contient les buissons et les portails fermés.
         self.walls.draw()
+
+        # On dessine aussi tous les portails.
+        # Les portails fermés sont déjà dans self.walls,
+        # mais on les redessine ici avec leur texture de portail.
+        self.gate_sprites.draw()
+
         self.holes.draw()
         self.crystals.draw()
+
+        self.switch_sprites.draw()
 
         self.spinner_sprites.draw()
         self.bat_sprites.draw()
@@ -464,6 +532,9 @@ class GameView(arcade.View):
 
         if self.boomerang.state != BoomerangState.INACTIVE:
             self.boomerang.update_animation()
+
+        if self.sword.state == SwordState.ACTIVE:
+            self.sword.update_animation()
 
     def _update_enemies(self) -> None:
         self._update_spinners()
@@ -579,58 +650,19 @@ class GameView(arcade.View):
     ) -> None:
         bat_sprite.update_animation()
 
-        self._maybe_change_bat_direction(bat)
+        bat.x += bat.dx
+        bat.y += bat.dy
 
-        new_x, new_y = self._compute_next_bat_position(bat, bat_sprite)
+        if bat.x < bat.bounds.min_x or bat.x > bat.bounds.max_x:
+            bat.dx = -bat.dx
+            bat.x += bat.dx
 
-        new_x, new_y = self._bounce_bat_if_needed(
-            bat,
-            bat_sprite,
-            new_x,
-            new_y,
-        )
+        if bat.y < bat.bounds.min_y or bat.y > bat.bounds.max_y:
+            bat.dy = -bat.dy
+            bat.y += bat.dy
 
-        bat_sprite.center_x = new_x
-        bat_sprite.center_y = new_y
-
-    def _maybe_change_bat_direction(self, bat: Bat) -> None:
-        bat.frames_direction_change -= 1
-
-        if bat.frames_direction_change <= 0:
-            bat.angle += self.random.uniform(-0.5, 0.5)
-            bat.frames_direction_change = BAT_DIRECTION_CHANGE
-
-    def _compute_next_bat_position(
-        self,
-        bat: Bat,
-        bat_sprite: arcade.TextureAnimationSprite,
-    ) -> tuple[float, float]:
-        dx = bat.speed * math.cos(bat.angle)
-        dy = bat.speed * math.sin(bat.angle)
-
-        return bat_sprite.center_x + dx, bat_sprite.center_y + dy
-
-    def _bounce_bat_if_needed(
-        self,
-        bat: Bat,
-        bat_sprite: arcade.TextureAnimationSprite,
-        new_x: float,
-        new_y: float,
-    ) -> tuple[float, float]:
-        min_x = grid_to_pixels(int(bat.bounds.min_x))
-        max_x = grid_to_pixels(int(bat.bounds.max_x))
-        min_y = grid_to_pixels(int(bat.bounds.min_y))
-        max_y = grid_to_pixels(int(bat.bounds.max_y))
-
-        if new_x < min_x or new_x > max_x:
-            bat.angle = math.pi - bat.angle
-            new_x, new_y = self._compute_next_bat_position(bat, bat_sprite)
-
-        if new_y < min_y or new_y > max_y:
-            bat.angle = -bat.angle
-            new_x, new_y = self._compute_next_bat_position(bat, bat_sprite)
-
-        return new_x, new_y
+        bat_sprite.center_x = bat.x
+        bat_sprite.center_y = bat.y
 
     # ==================================================
     # Slimes
@@ -645,12 +677,12 @@ class GameView(arcade.View):
         slime: Slime,
         slime_sprite: arcade.TextureAnimationSprite,
     ) -> None:
-        # Maintenant le slime utilise le navmesh.
-        # Il ne va plus forcément en ligne droite.
-        update_slime_random_movement(
+        update_slime_movement(
             slime,
             self.navmesh,
             self.random,
+            self.player.position,
+            self.walls,
         )
 
         slime_sprite.center_x = slime.x
@@ -673,6 +705,9 @@ class GameView(arcade.View):
         self.boomerang.distance_travelled += BOOMERANG_SPEED
 
         if self.boomerang.distance_travelled >= BOOMERANG_MAX_DISTANCE:
+            self._start_boomerang_return()
+
+        if self._weapon_hits_switches(self.boomerang):
             self._start_boomerang_return()
 
         if self._boomerang_hits_wall():
@@ -717,6 +752,7 @@ class GameView(arcade.View):
         self.boomerang.center_x += BOOMERANG_SPEED * dx / distance
         self.boomerang.center_y += BOOMERANG_SPEED * dy / distance
 
+        self._weapon_hits_switches(self.boomerang)
         self._boomerang_hits_enemy()
 
     def _catch_boomerang(self) -> None:
@@ -733,19 +769,22 @@ class GameView(arcade.View):
             return
 
         self.sword.position = self.player.position
-        self.sword.update_animation()
-
         self.sword.time += delta_time
 
         if self.sword.time >= SWORD_ATTACK_DURATION:
             self._stop_sword_attack()
+            return
 
         self._sword_hits_enemies()
         self._sword_hits_crystals()
+        self._weapon_hits_switches(self.sword)
 
     def _stop_sword_attack(self) -> None:
         self.sword.state = SwordState.INACTIVE
         self.sword.time = 0
+
+        for switch in self.switches:
+            switch.is_being_hit = False
 
     def _sword_hits_enemies(self) -> None:
         self._weapon_hits_spinners(self.sword)
@@ -755,6 +794,58 @@ class GameView(arcade.View):
     def _sword_hits_crystals(self) -> None:
         crystals = self._collisions(self.sword, self.crystals)
         self._collect_crystals(crystals)
+
+    # ==================================================
+    # Switches et gates
+    # ==================================================
+
+    def _weapon_hits_switches(self, weapon: arcade.Sprite) -> bool:
+        touched_switch = False
+
+        for switch, switch_sprite in zip(self.switches, self.switch_sprites):
+            is_touching = arcade.check_for_collision(
+                weapon,
+                switch_sprite,
+            )
+
+            if is_touching and not switch.is_being_hit:
+                switch.is_being_hit = True
+                touched_switch = True
+
+                toggle_switch(switch)
+                self._sync_switch_texture(switch, switch_sprite)
+                self._sync_gates()
+
+            elif not is_touching:
+                switch.is_being_hit = False
+
+        return touched_switch
+
+    def _sync_switch_texture(
+        self,
+        switch: Switch,
+        switch_sprite: arcade.Sprite,
+    ) -> None:
+        if switch.is_on:
+            switch_sprite.texture = TEXTURE_SWITCH_ON
+        else:
+            switch_sprite.texture = TEXTURE_SWITCH_OFF
+
+    def _sync_gates(self) -> None:
+        update_gates(self.switches, self.gates)
+
+        for gate, gate_sprite in zip(self.gates, self.gate_sprites):
+            if gate.is_open:
+                gate_sprite.texture = TEXTURE_GATE_OPEN
+
+                if gate_sprite in self.walls:
+                    self.walls.remove(gate_sprite)
+
+            else:
+                gate_sprite.texture = TEXTURE_GATE_CLOSED
+
+                if gate_sprite not in self.walls:
+                    self.walls.append(gate_sprite)
 
     # ==================================================
     # Collisions avec les armes
@@ -811,11 +902,11 @@ class GameView(arcade.View):
         sprites: arcade.SpriteList,
         logic_objects: list,
     ) -> None:
-        # Les deux listes sont parallèles :
+        # Les listes sont parallèles :
         # sprites[i] correspond à logic_objects[i].
         for i, sprite in enumerate(sprites):
             if sprite == target_sprite:
-                sprites.pop(i)
+                sprite.remove_from_sprite_lists()
                 logic_objects.pop(i)
                 return
 
