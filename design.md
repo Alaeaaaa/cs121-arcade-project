@@ -795,3 +795,337 @@ Les principales pistes d’amélioration seraient :
 - rendre les ennemis plus polymorphiques ;
 - affiner le navmesh avec plusieurs nœuds par cellule ;
 - ajouter davantage de tests unitaires.
+
+---
+
+# Analyse des performances
+
+Dans cette partie, nous analysons les performances de notre jeu pour deux aspects importants :
+
+- le chargement d’une map ;
+- l’exécution de `on_update`.
+
+Nous faisons d’abord une analyse théorique grossière de complexité, puis nous comparons cette analyse avec des benchmarks réalisés sur des maps générées programmatiquement.
+
+---
+
+## 1. Performance du chargement d’une map
+
+### Facteur choisi
+
+Pour le chargement d’une map, nous avons choisi comme facteur principal :
+
+```text
+n = nombre total de cellules dans la map
+```
+
+Si la map est de taille `m × m`, alors :
+
+```text
+n = m²
+```
+
+Nous avons choisi ce facteur parce que le chargement de la map dépend directement du nombre de cellules. En effet, au chargement, notre programme doit lire la grille ASCII, vérifier sa taille, convertir chaque caractère en `GridCell`, trouver la position du joueur, détecter les ennemis et construire les structures nécessaires au jeu.
+
+---
+
+## 2. Analyse théorique du chargement
+
+Le chargement commence par la lecture du fichier de map. La map contient une partie YAML et une grille ASCII. La partie YAML contient les informations comme la largeur, la hauteur, les switches et les gates. La grille ASCII contient les cellules du jeu.
+
+La partie principale du chargement consiste à parcourir toutes les cellules de la map. Pour chaque cellule, on lit le caractère correspondant et on le transforme en valeur de l’énumération `GridCell`.
+
+Par exemple :
+
+```python
+' ' -> GridCell.GRASS
+'x' -> GridCell.BUSH
+'*' -> GridCell.CRYSTAL
+'m' -> GridCell.SLIME
+'^' -> GridCell.SWITCH
+'|' -> GridCell.GATE
+```
+
+Comme chaque cellule est lue une seule fois, cette partie a une complexité :
+
+```text
+Θ(n)
+```
+
+Ensuite, certaines informations sont aussi vérifiées pendant ou après ce parcours : la position du joueur, les dimensions de la map, les positions des switches et les positions des gates. Ces vérifications dépendent aussi du nombre de cellules ou du nombre d’objets déclarés dans la map.
+
+Dans notre jeu, le navmesh est aussi construit au chargement. Dans notre version actuelle, le navmesh contient essentiellement un nœud par cellule accessible. Pour construire le navmesh, on parcourt les cellules de la map et on ajoute un nœud pour chaque cellule sur laquelle un slime peut marcher.
+
+Cette étape est donc aussi linéaire en fonction du nombre de cellules :
+
+```text
+Θ(n)
+```
+
+Ensuite, pour construire les arêtes du navmesh, chaque nœud regarde un nombre constant de voisins, par exemple les cases autour de lui. Comme chaque nœud a seulement un nombre borné de voisins, cette étape est aussi :
+
+```text
+Θ(n)
+```
+
+Ainsi, la complexité totale du chargement est dominée par des parcours linéaires de la map.
+
+Donc, grossièrement, le chargement d’une map est :
+
+```text
+Θ(n)
+```
+
+où `n` est le nombre total de cellules de la map.
+
+Si on affinait le navmesh avec `k × k` nœuds par cellule, alors le nombre de nœuds deviendrait environ :
+
+```text
+n k²
+```
+
+et la construction du navmesh aurait une complexité environ :
+
+```text
+Θ(n k²)
+```
+
+Dans notre version actuelle, on peut considérer `k = 1`, donc on reste sur une complexité linéaire en fonction du nombre de cellules.
+
+---
+
+## 3. Benchmark du chargement
+
+Pour vérifier cette analyse, nous avons généré programmatiquement plusieurs maps carrées de tailles différentes.
+
+Nous avons mesuré le temps nécessaire pour :
+
+- construire le texte de la map ;
+- parser la map avec `map_from_string` ;
+- construire le navmesh avec `create_navmesh`.
+
+Nous avons testé plusieurs tailles de maps, par exemple :
+
+```text
+10 × 10
+20 × 20
+50 × 50
+100 × 100
+200 × 200
+```
+
+Pour chaque taille, nous avons mesuré le temps de chargement plusieurs fois, puis nous avons pris une moyenne afin de réduire l’effet du bruit.
+
+Le graphe suivant montre le temps de chargement en fonction du nombre de cellules :
+
+```markdown
+![Benchmark du chargement](benchmark_map_loading.png)
+```
+
+### Commentaire sur les résultats
+
+Les résultats sont globalement cohérents avec l’analyse théorique.
+
+Quand le nombre de cellules augmente, le temps de chargement augmente aussi. La courbe obtenue ressemble à une croissance à peu près linéaire. Cela correspond à notre analyse en `Θ(n)`.
+
+Il peut y avoir de petites variations dans les mesures, surtout pour les petites maps, car le temps mesuré est très faible et dépend aussi du système, du cache, du ramasse-miettes Python et d’autres processus de l’ordinateur.
+
+Pour les grandes maps, la tendance devient plus claire : le temps augmente principalement avec le nombre total de cellules et avec la taille du navmesh construit.
+
+---
+
+# 4. Performance de `on_update`
+
+## Facteur choisi
+
+Pour `on_update`, nous avons choisi comme facteur principal :
+
+```text
+s = nombre de slimes dans la map
+```
+
+Nous avons choisi ce facteur parce que les slimes sont les ennemis les plus coûteux à mettre à jour. Contrairement aux spinners et aux chauves-souris, les slimes peuvent utiliser une ligne de vue et un pathfinding basé sur le navmesh.
+
+Chaque frame, le jeu doit mettre à jour tous les slimes présents dans la map. Si le nombre de slimes augmente, le temps passé dans `on_update` peut donc augmenter significativement.
+
+---
+
+## 5. Analyse théorique de `on_update`
+
+À chaque frame, la méthode `on_update` met à jour plusieurs parties du jeu :
+
+- le joueur ;
+- le moteur physique ;
+- les armes ;
+- les ennemis ;
+- les collisions ;
+- les switches et gates si nécessaire ;
+- la caméra.
+
+La plupart de ces opérations ne changent pas beaucoup quand on ajoute seulement des slimes. Nous nous concentrons donc sur le coût lié aux slimes.
+
+Pour chaque slime, le jeu effectue plusieurs opérations :
+
+- calculer la distance entre le slime et le joueur ;
+- vérifier si le slime peut voir le joueur ;
+- éventuellement calculer un chemin vers le joueur ;
+- faire avancer le slime sur son chemin courant ;
+- mettre à jour le sprite correspondant.
+
+Si le slime ne voit pas le joueur et continue simplement sa patrouille, le coût est relativement faible. Il suit son chemin courant ou choisit une nouvelle destination. Cette partie est proche de :
+
+```text
+Θ(1)
+```
+
+par slime, si aucun nouveau chemin complexe n’est recalculé.
+
+Cependant, si le slime voit le joueur et doit recalculer un chemin avec le navmesh, le coût est plus important. Le calcul du plus court chemin utilise NetworkX, donc un algorithme de type Dijkstra.
+
+Si on note :
+
+```text
+V = nombre de nœuds du navmesh
+E = nombre d’arêtes du navmesh
+```
+
+alors Dijkstra a une complexité :
+
+```text
+Θ((V + E) log V)
+```
+
+Dans notre navmesh, chaque nœud est connecté à un nombre constant de voisins. Donc :
+
+```text
+E = Θ(V)
+```
+
+Ainsi, la complexité devient environ :
+
+```text
+Θ(V log V)
+```
+
+Pour `s` slimes, dans le pire cas où tous les slimes recalculent un chemin pendant la même frame, on obtient :
+
+```text
+Θ(s V log V)
+```
+
+C’est le pire cas théorique.
+
+En pratique, notre code évite de recalculer le chemin à chaque frame. Le chemin est recalculé seulement lorsque c’est nécessaire, par exemple si le joueur s’est suffisamment déplacé ou si le slime doit choisir une nouvelle destination.
+
+Donc le coût moyen réel est plus faible que le pire cas. La plupart des frames coûtent plutôt environ :
+
+```text
+Θ(s)
+```
+
+car chaque slime fait seulement une petite mise à jour locale.
+
+On peut donc résumer :
+
+```text
+Cas moyen sans recalcul fréquent : Θ(s)
+Pire cas avec recalcul de chemin pour chaque slime : Θ(s V log V)
+```
+
+où :
+
+- `s` est le nombre de slimes ;
+- `V` est le nombre de nœuds du navmesh.
+
+---
+
+## 6. Benchmark de `on_update`
+
+Pour vérifier cette analyse, nous avons généré programmatiquement des maps contenant un nombre variable de slimes.
+
+Nous avons gardé une taille de map fixe afin d’isoler l’effet du nombre de slimes. Ensuite, nous avons fait varier seulement le nombre de slimes.
+
+Par exemple, nous avons testé :
+
+```text
+1 slime
+3 slimes
+5 slimes
+10 slimes
+20 slimes
+50 slimes
+100 slimes
+```
+
+Pour chaque map, nous avons lancé le jeu puis appelé manuellement la méthode :
+
+```python
+view.on_update(1 / 60)
+```
+
+Nous avons répété cet appel plusieurs fois et calculé le temps moyen d’un `on_update`.
+
+Nous n’avons pas utilisé `window.test()`, car cette méthode fait réellement passer le temps horloge. Pour un benchmark, nous voulons mesurer uniquement le temps d’exécution de notre code.
+
+Le graphe suivant montre le temps moyen d’un `on_update` en fonction du nombre de slimes :
+
+```markdown
+![Benchmark de on_update](benchmark_on_update_slimes.png)
+```
+
+### Commentaire sur les résultats
+
+Les résultats sont globalement cohérents avec notre analyse théorique.
+
+Quand le nombre de slimes augmente, le temps moyen de `on_update` augmente aussi. Cela est attendu, car chaque slime doit être mis à jour à chaque frame.
+
+La croissance observée est proche d’une croissance linéaire dans les cas où les slimes ne recalculent pas tous un chemin à chaque frame. Cela correspond au coût moyen :
+
+```text
+Θ(s)
+```
+
+Si plusieurs slimes recalculent leur chemin au même moment, certaines mesures peuvent être plus élevées. Cela correspond au coût plus important du pathfinding, qui dépend du nombre de nœuds du navmesh.
+
+En pratique, le jeu reste efficace parce que le pathfinding n’est pas recalculé en permanence. Cette optimisation est importante : sans elle, le jeu pourrait devenir beaucoup plus lent avec beaucoup de slimes.
+
+---
+
+# 7. Conclusion sur les performances
+
+L’analyse théorique et les benchmarks montrent que les performances de notre jeu sont raisonnables pour les tailles de maps utilisées.
+
+Pour le chargement, la complexité est principalement linéaire en fonction du nombre de cellules de la map :
+
+```text
+Θ(n)
+```
+
+Cela correspond au fait que la map est parcourue une fois pour créer les cellules et une autre fois pour construire les structures de navigation.
+
+Pour `on_update`, le coût dépend surtout du nombre de slimes. En moyenne, si les chemins ne sont pas recalculés à chaque frame, le coût est proche de :
+
+```text
+Θ(s)
+```
+
+où `s` est le nombre de slimes.
+
+Dans le pire cas, si tous les slimes recalculent un chemin pendant la même frame, le coût peut monter à :
+
+```text
+Θ(s V log V)
+```
+
+où `V` est le nombre de nœuds du navmesh.
+
+Notre optimisation principale est donc de ne pas recalculer les chemins inutilement. Cela permet de garder un `on_update` plus stable.
+
+Pour améliorer encore les performances, on pourrait :
+
+- utiliser A* au lieu de Dijkstra pour le pathfinding ;
+- recalculer les chemins moins souvent ;
+- limiter le nombre de slimes actifs autour du joueur ;
+- simplifier le navmesh pour les très grandes maps ;
+- mettre en cache certains chemins fréquents ;
+- séparer davantage la logique des ennemis pour optimiser chaque type de monstre.
