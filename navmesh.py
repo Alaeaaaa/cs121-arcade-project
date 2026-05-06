@@ -67,6 +67,7 @@ def is_slime_obstacle(cell: GridCell) -> bool:
     return cell in {
         GridCell.BUSH,
         GridCell.HOLE,
+        GridCell.GATE,
     }
 
 

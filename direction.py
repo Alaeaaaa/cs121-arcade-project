@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import Enum, auto
 
 class Direction(Enum):
-    NORTH = 1
-    EAST = 2
-    SOUTH = 3
-    WEST = 4
+    NORTH = auto()
+    EAST = auto()
+    SOUTH = auto()
+    WEST = auto()
