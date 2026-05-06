@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 import math
 import random
@@ -6,11 +8,13 @@ from constants import TILE_SIZE
 from map import GridCell, Map
 
 
-# Constantes propres aux chauves-souris.
+# ==================================================
+# Constantes des chauves-souris
+# ==================================================
+
 BAT_SPEED = 2.0
 BAT_WIDTH = 6
 BAT_HEIGHT = 4
-BAT_DIRECTION_CHANGE = 20
 
 
 @dataclass
@@ -24,11 +28,15 @@ class BatBounds:
 
 @dataclass
 class Bat:
-    # Position, vitesse et limites de mouvement d'une chauve-souris.
+    # Position actuelle en pixels.
     x: float
     y: float
+
+    # Vitesse actuelle en pixels/frame.
     dx: float
     dy: float
+
+    # Zone dans laquelle la chauve-souris peut bouger.
     bounds: BatBounds
 
 
@@ -38,12 +46,12 @@ def grid_to_pixels(i: int) -> int:
 
 
 def clamp(value: int, min_value: int, max_value: int) -> int:
-    # Force une valeur à rester dans l'intervalle [min_value, max_value].
+    # Force value à rester dans [min_value, max_value].
     return max(min_value, min(value, max_value))
 
 
 def find_cells(game_map: Map, target: GridCell) -> list[tuple[int, int]]:
-    # Fonction générale : trouve toutes les cases d'un certain type dans la map.
+    # Trouve toutes les cases d'un certain type dans la map.
     return [
         (x, y)
         for y in range(game_map.height)
@@ -53,7 +61,6 @@ def find_cells(game_map: Map, target: GridCell) -> list[tuple[int, int]]:
 
 
 def find_bats(game_map: Map) -> list[tuple[int, int]]:
-    # Cas particulier de find_cells : on cherche seulement les cases BAT.
     return find_cells(game_map, GridCell.BAT)
 
 
@@ -64,7 +71,10 @@ def compute_bounds(
     width: int,
     height: int,
 ) -> BatBounds:
-    # Calcule un rectangle autour de (x, y), sans dépasser les bords de la map.
+    # Calcule les limites de mouvement autour de la position de départ.
+    #
+    # x, y sont en coordonnées de grille.
+    # Les limites retournées sont en pixels.
     min_grid_x = clamp(x - width // 2, 0, game_map.width - 1)
     max_grid_x = clamp(x + width // 2, 0, game_map.width - 1)
 
@@ -80,19 +90,35 @@ def compute_bounds(
 
 
 def compute_bat_bounds(game_map: Map, x: int, y: int) -> BatBounds:
-    # Cas particulier de compute_bounds avec les dimensions propres aux bats.
-    return compute_bounds(game_map, x, y, BAT_WIDTH, BAT_HEIGHT)
+    return compute_bounds(
+        game_map,
+        x,
+        y,
+        BAT_WIDTH,
+        BAT_HEIGHT,
+    )
 
 
-def random_velocity(speed: float) -> tuple[float, float]:
-    # Crée une vitesse de norme speed dans une direction aléatoire.
-    angle = random.random() * 2 * math.pi
-    return math.cos(angle) * speed, math.sin(angle) * speed
+def random_velocity(
+    rng: random.Random,
+    speed: float,
+) -> tuple[float, float]:
+    # Crée une vitesse aléatoire de norme speed.
+    angle = rng.random() * 2 * math.pi
+
+    return (
+        math.cos(angle) * speed,
+        math.sin(angle) * speed,
+    )
 
 
-def create_bat(game_map: Map, x: int, y: int) -> Bat:
-    # Crée une Bat complète à partir d'une position en grille.
-    dx, dy = random_velocity(BAT_SPEED)
+def create_bat(
+    game_map: Map,
+    x: int,
+    y: int,
+    rng: random.Random,
+) -> Bat:
+    dx, dy = random_velocity(rng, BAT_SPEED)
 
     return Bat(
         x=grid_to_pixels(x),
@@ -103,9 +129,11 @@ def create_bat(game_map: Map, x: int, y: int) -> Bat:
     )
 
 
-def create_bats(game_map: Map, val=None) -> list[Bat]:
-    # val est gardé pour rester compatible avec gameview.py si l'appel existe déjà.
+def create_bats(
+    game_map: Map,
+    rng: random.Random,
+) -> list[Bat]:
     return [
-        create_bat(game_map, x, y)
+        create_bat(game_map, x, y, rng)
         for x, y in find_bats(game_map)
     ]
