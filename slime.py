@@ -1,65 +1,64 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 import math
 import random
 
 from constants import TILE_SIZE
 from map import GridCell, Map
+from navmesh import NavMesh, Point, shortest_path
 
 
 # ==================================================
 # Constantes des slimes
 # ==================================================
 
-# Comme les bats, les slimes bougent petit à petit à chaque frame.
-# Ici, ils avancent de 1 pixel par frame.
 SLIME_SPEED = 1.0
 
-# Le slime patrouille dans un carré 7x7 autour de sa position de départ.
-# Rayon 3 : 3 cases à gauche, 3 à droite, 3 en bas, 3 en haut.
 PATROL_RADIUS = 3
 
-# Si le slime est à moins de 4 pixels de sa destination,
-# on considère qu'il est arrivé.
 DESTINATION_EPSILON = 4.0
 
 
 @dataclass
 class Slime:
     # Position de départ en coordonnées de grille.
-    # Elle sert à calculer la zone de patrouille.
     start_x: int
     start_y: int
 
-    # Destination actuelle en pixels.
-    # Contrairement à la bat qui suit un angle,
-    # le slime suit une destination précise.
+    # Destination finale actuelle en pixels.
     destination_x: float
     destination_y: float
 
     # Position actuelle en pixels.
-    # Comme pour les bats, on utilise des float pour avoir un mouvement fluide.
     x: float
     y: float
 
-    # Toutes les cases où le slime peut choisir une destination.
-    # Ces positions sont en coordonnées de grille.
+    # Destinations possibles en coordonnées de grille.
     possible_destinations: list[tuple[int, int]]
+
+    # Chemin actuel en pixels.
+    #
+    # Avant :
+    # le slime allait directement vers destination_x, destination_y.
+    #
+    # Maintenant :
+    # il suit current_path point par point.
+    current_path: list[Point]
+
+    # Position du prochain point à suivre dans current_path.
+    current_path_index: int
 
 
 def grid_to_pixels(i: int) -> int:
-    # Convertit une coordonnée de grille en pixel.
-    # On place le sprite au centre de la case.
     return i * TILE_SIZE + TILE_SIZE // 2
 
 
 def is_inside_map(game_map: Map, x: int, y: int) -> bool:
-    # Vérifie que la case existe dans la map.
     return 0 <= x < game_map.width and 0 <= y < game_map.height
 
 
 def is_slime_obstacle(cell: GridCell) -> bool:
-    # Le slime marche au sol.
-    # Il ne choisit donc pas les buissons ni les trous comme destination.
     return cell in {
         GridCell.BUSH,
         GridCell.HOLE,
@@ -67,8 +66,6 @@ def is_slime_obstacle(cell: GridCell) -> bool:
 
 
 def can_slime_stand_on(game_map: Map, x: int, y: int) -> bool:
-    # Une case est accessible si elle est dans la map
-    # et si ce n'est pas un obstacle.
     if not is_inside_map(game_map, x, y):
         return False
 
@@ -76,8 +73,6 @@ def can_slime_stand_on(game_map: Map, x: int, y: int) -> bool:
 
 
 def find_cells(game_map: Map, target: GridCell) -> list[tuple[int, int]]:
-    # Même idée que pour les autres monstres :
-    # on parcourt toute la map pour trouver un type de case précis.
     return [
         (x, y)
         for y in range(game_map.height)
@@ -87,7 +82,6 @@ def find_cells(game_map: Map, target: GridCell) -> list[tuple[int, int]]:
 
 
 def find_slimes(game_map: Map) -> list[tuple[int, int]]:
-    # On récupère toutes les positions où il y a un slime dans la map.
     return find_cells(game_map, GridCell.SLIME)
 
 
@@ -96,11 +90,7 @@ def slime_patrol_destinations(
     start_x: int,
     start_y: int,
 ) -> list[tuple[int, int]]:
-    # Calcule les destinations possibles du slime.
-    #
-    # Différence avec la bat :
-    # - la bat rebondit dans une zone
-    # - le slime choisit une destination dans sa zone, puis avance vers elle
+    # Zone 7x7 autour du slime.
     destinations: list[tuple[int, int]] = []
 
     for y in range(start_y - PATROL_RADIUS, start_y + PATROL_RADIUS + 1):
@@ -115,12 +105,15 @@ def choose_random_destination(
     possible_destinations: list[tuple[int, int]],
     rng: random.Random,
 ) -> tuple[int, int]:
-    # Choisit une case au hasard parmi les destinations possibles.
     return rng.choice(possible_destinations)
 
 
-def set_random_destination(slime: Slime, rng: random.Random) -> None:
-    # Choisit une nouvelle destination et la convertit en pixels.
+def set_random_destination(
+    slime: Slime,
+    navmesh: NavMesh,
+    rng: random.Random,
+) -> None:
+    # Le slime choisit une destination valide dans sa zone.
     destination_x, destination_y = choose_random_destination(
         slime.possible_destinations,
         rng,
@@ -129,6 +122,20 @@ def set_random_destination(slime: Slime, rng: random.Random) -> None:
     slime.destination_x = grid_to_pixels(destination_x)
     slime.destination_y = grid_to_pixels(destination_y)
 
+    # Différence avec l'étape précédente :
+    # au lieu d'aller en ligne droite, on demande un chemin au navmesh.
+    recompute_path(slime, navmesh)
+
+
+def recompute_path(slime: Slime, navmesh: NavMesh) -> None:
+    # Calcule un nouveau plus court chemin depuis la position du slime
+    # jusqu'à sa destination actuelle.
+    source = (slime.x, slime.y)
+    target = (slime.destination_x, slime.destination_y)
+
+    slime.current_path = shortest_path(navmesh, source, target)
+    slime.current_path_index = 0
+
 
 def distance_between_points(
     x1: float,
@@ -136,77 +143,117 @@ def distance_between_points(
     x2: float,
     y2: float,
 ) -> float:
-    # Distance classique entre deux points.
     dx = x2 - x1
     dy = y2 - y1
 
     return math.sqrt(dx**2 + dy**2)
 
 
-def has_reached_destination(slime: Slime) -> bool:
-    # Vérifie si le slime est arrivé assez proche de sa destination.
+def has_reached_point(
+    slime: Slime,
+    point: Point,
+) -> bool:
+    # Vérifie si le slime est arrivé au prochain point du chemin.
+    point_x, point_y = point
+
     distance = distance_between_points(
         slime.x,
         slime.y,
-        slime.destination_x,
-        slime.destination_y,
+        point_x,
+        point_y,
     )
 
     return distance <= DESTINATION_EPSILON
 
 
-def move_slime_towards_destination(slime: Slime) -> None:
-    # Mouvement du slime.
-    #
-    # Ressemblance avec les bats :
-    # dans les deux cas, on calcule un petit déplacement dx, dy.
-    #
-    # Différence :
-    # - bat : dx, dy viennent de speed * cos(angle), speed * sin(angle)
-    # - slime : dx, dy viennent de destination - position
+def has_reached_destination(slime: Slime) -> bool:
+    # Vérifie si le slime est arrivé à sa destination finale.
+    return distance_between_points(
+        slime.x,
+        slime.y,
+        slime.destination_x,
+        slime.destination_y,
+    ) <= DESTINATION_EPSILON
 
-    dx = slime.destination_x - slime.x
-    dy = slime.destination_y - slime.y
+
+def current_target_point(slime: Slime) -> Point:
+    # Donne le prochain point du chemin.
+    return slime.current_path[slime.current_path_index]
+
+
+def go_to_next_path_point(slime: Slime) -> None:
+    # Passe au point suivant dans le chemin.
+    if slime.current_path_index < len(slime.current_path) - 1:
+        slime.current_path_index += 1
+
+
+def move_slime_towards_point(slime: Slime, point: Point) -> None:
+    # Même idée que le mouvement précédent :
+    # dx, dy = target - position.
+    #
+    # Mais maintenant la cible n'est pas forcément la destination finale.
+    # C'est le prochain point du chemin.
+    point_x, point_y = point
+
+    dx = point_x - slime.x
+    dy = point_y - slime.y
 
     distance = math.sqrt(dx**2 + dy**2)
 
     if distance <= DESTINATION_EPSILON:
         return
 
-    # On divise par distance pour garder seulement la direction.
-    # Puis on multiplie par SLIME_SPEED pour avoir une vitesse constante.
     slime.x += SLIME_SPEED * dx / distance
     slime.y += SLIME_SPEED * dy / distance
 
 
-def update_slime_random_movement(slime: Slime, rng: random.Random) -> None:
-    # À chaque frame :
-    # 1. si le slime est arrivé, il choisit une nouvelle destination
-    # 2. il avance vers cette destination
-    #
-    # Pour l'instant, il ignore le joueur.
-    # La poursuite du joueur viendra avec la line of sight + navmesh.
-    if has_reached_destination(slime):
-        set_random_destination(slime, rng)
+def follow_current_path(slime: Slime) -> None:
+    # Le slime avance point par point dans son chemin.
+    if len(slime.current_path) == 0:
+        return
 
-    move_slime_towards_destination(slime)
+    point = current_target_point(slime)
+
+    if has_reached_point(slime, point):
+        go_to_next_path_point(slime)
+        point = current_target_point(slime)
+
+    move_slime_towards_point(slime, point)
+
+
+def update_slime_random_movement(
+    slime: Slime,
+    navmesh: NavMesh,
+    rng: random.Random,
+) -> None:
+    # À chaque frame :
+    #
+    # 1. Si le slime est arrivé à sa destination finale,
+    #    il choisit une nouvelle destination.
+    #
+    # 2. Il calcule alors un chemin avec le navmesh.
+    #
+    # 3. Il suit ce chemin point par point.
+
+    if has_reached_destination(slime):
+        set_random_destination(slime, navmesh, rng)
+
+    follow_current_path(slime)
 
 
 def create_slime(
     game_map: Map,
+    navmesh: NavMesh,
     start_x: int,
     start_y: int,
     rng: random.Random,
 ) -> Slime:
-    # Crée un slime à partir de sa position de départ.
     possible_destinations = slime_patrol_destinations(
         game_map,
         start_x,
         start_y,
     )
 
-    # Sécurité : si aucune destination n'est possible,
-    # il reste simplement sur sa case de départ.
     if len(possible_destinations) == 0:
         possible_destinations = [(start_x, start_y)]
 
@@ -215,7 +262,7 @@ def create_slime(
         rng,
     )
 
-    return Slime(
+    slime = Slime(
         start_x=start_x,
         start_y=start_y,
         destination_x=grid_to_pixels(first_destination_x),
@@ -223,12 +270,21 @@ def create_slime(
         x=grid_to_pixels(start_x),
         y=grid_to_pixels(start_y),
         possible_destinations=possible_destinations,
+        current_path=[],
+        current_path_index=0,
     )
 
+    recompute_path(slime, navmesh)
 
-def create_slimes(game_map: Map, rng: random.Random) -> list[Slime]:
-    # Crée tous les slimes trouvés dans la map.
+    return slime
+
+
+def create_slimes(
+    game_map: Map,
+    navmesh: NavMesh,
+    rng: random.Random,
+) -> list[Slime]:
     return [
-        create_slime(game_map, x, y, rng)
+        create_slime(game_map, navmesh, x, y, rng)
         for x, y in find_slimes(game_map)
     ]
