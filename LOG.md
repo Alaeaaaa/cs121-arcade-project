@@ -138,3 +138,147 @@ L'ajout de l'icône des armes est un aspect assez difficile à aborder, en parti
 L'ajout des commandes de la touche `R` en tenant compte des deux armes a pris du temps, et la modification de la touche `D` pour inclure les commandes de l'épée également.
 
 La délimitation de la zone d'action des chauves-souris ET SURTOUT la mise à jour de leur direction, EN VEILLANT à ne pas dépasser les limites de la zone est ce qui a pris le plus de temps.
+
+---
+
+## Semaine 7
+
+Temps de travail : environ 8 heures.
+
+Cette semaine, nous avons ajouté une nouvelle classe d’ennemis : **les blobs / slimes**.
+
+L’objectif était de créer des ennemis plus intelligents que les spinners et les chauves-souris. Contrairement aux autres monstres, les slimes ne se déplacent pas simplement en ligne droite ou dans une zone fixe : ils peuvent patrouiller, voir le joueur, puis le poursuivre en évitant les obstacles.
+
+Nous avons commencé par modifier la map pour ajouter une nouvelle cellule :
+
+- ajout de la cellule `SLIME` dans `GridCell`
+- utilisation du caractère `m` dans les fichiers de map pour représenter un slime
+- création d’un fichier `slime.py`
+- création d’une classe `Slime` pour stocker :
+  - sa position de départ
+  - sa position actuelle
+  - sa destination
+  - ses destinations possibles de patrouille
+  - son chemin courant
+  - l’indice du point du chemin qu’il suit actuellement
+
+Nous avons ensuite ajouté une logique de patrouille.
+
+Pour cela, nous avons :
+
+- défini un rayon de patrouille autour de la position initiale du slime
+- écrit une fonction qui cherche les cases accessibles autour du slime
+- empêché les slimes de choisir comme destination les buissons, les trous et les portails
+- choisi aléatoirement une destination parmi les cases valides
+- fait avancer le slime vers sa destination
+- choisi une nouvelle destination quand il atteint la précédente
+
+Ensuite, nous avons ajouté la ligne de vue du slime vers le joueur.
+
+Pour cela, nous avons :
+
+- ajouté une distance maximale de vision
+- utilisé `arcade.has_line_of_sight` pour vérifier si un obstacle bloque la vue
+- fait en sorte que les buissons et les portails fermés bloquent la vue
+- gardé les trous comme obstacles pour le déplacement, mais pas comme obstacles pour la ligne de vue
+- fait poursuivre le joueur par le slime uniquement lorsqu’il est visible
+
+Nous avons ensuite ajouté le pathfinding avec un navmesh.
+
+Pour cela, nous avons :
+
+- installé `networkx` avec `uv`
+- créé un fichier `navmesh.py`
+- représenté les cases accessibles par des nœuds dans un graphe
+- ajouté des arêtes entre les cases voisines
+- utilisé un poids basé sur la distance euclidienne entre deux cases
+- utilisé l’algorithme de plus court chemin de NetworkX pour calculer le chemin du slime
+- transformé les positions de grille en positions en pixels
+- fait suivre au slime les points du chemin calculé
+
+Nous avons aussi optimisé le comportement du slime.
+
+Pour cela, nous avons :
+
+- évité de recalculer le chemin à chaque frame
+- recalculé le chemin seulement lorsque le joueur s’est suffisamment déplacé
+- ajouté une poursuite directe lorsque le joueur est très proche du slime
+- ajouté une petite tolérance pour considérer que le slime a atteint sa destination
+
+Enfin, nous avons intégré les slimes dans `GameView`.
+
+Nous avons :
+
+- ajouté une liste de slimes dans `GameView`
+- créé les sprites des slimes
+- ajouté leur dessin à l’écran
+- mis à jour leur position à chaque frame
+- ajouté la collision entre le joueur et un slime
+- ajouté la collision entre les slimes et les armes
+- fait recommencer le jeu si le joueur touche un slime
+
+**Difficultés**
+
+La partie la plus difficile était de comprendre comment représenter la map sous forme de graphe. Au début, nous avions seulement des positions en pixels et des cases dans la grille, mais il fallait faire le lien entre les deux.
+
+Le deuxième problème était d’éviter que le slime recalcule son chemin à chaque frame. Cela rendait le comportement moins propre et pouvait ralentir le jeu. Nous avons donc ajouté une condition pour recalculer le chemin seulement quand la destination change vraiment.
+
+Nous avons aussi dû faire attention à la ligne de vue : les trous doivent bloquer le mouvement des slimes, mais ils ne doivent pas bloquer leur vision. À l’inverse, les buissons et les portails fermés bloquent la vision.
+
+---
+
+## Semaine 8
+
+Temps de travail : environ 7 heures.
+
+Cette semaine, nous avons ajouté le système des **interrupteurs et des portails**.
+
+L’objectif était de permettre à la map de contenir des éléments interactifs : le joueur peut activer des interrupteurs avec ses armes, et ces interrupteurs ouvrent ou ferment des portails selon des conditions logiques.
+
+Nous avons commencé par modifier le format des maps.
+
+Avant, la map contenait surtout une grille ASCII. Maintenant, nous avons ajouté une partie de configuration en YAML avant la grille.
+
+Cette configuration permet de définir :
+
+- la largeur de la map
+- la hauteur de la map
+- la liste des interrupteurs
+- la liste des portails
+- les conditions d’ouverture des portails
+
+Nous avons ajouté deux nouveaux caractères dans la map :
+
+- `^` pour représenter un interrupteur
+- `|` pour représenter un portail
+
+Dans `map.py`, nous avons donc :
+
+- ajouté `SWITCH` dans `GridCell`
+- ajouté `GATE` dans `GridCell`
+- ajouté la lecture du YAML avec `pyyaml`
+- installé `pyyaml` avec `uv`
+- créé une classe `SwitchConfig` pour stocker la configuration d’un interrupteur
+- créé une classe `GateConfig` pour stocker la configuration d’un portail
+- vérifié que chaque interrupteur déclaré dans le YAML correspond bien à un `^` dans la grille
+- vérifié que chaque portail déclaré dans le YAML correspond bien à un `|` dans la grille
+- vérifié que les identifiants des interrupteurs sont uniques
+- ajouté des messages d’erreur plus précis en cas de problème dans la map
+
+Ensuite, nous avons ajouté les conditions logiques des portails.
+
+Nous avons créé plusieurs classes :
+
+- `GateCondition`
+- `SwitchIsOn`
+- `NotCondition`
+- `AndCondition`
+- `OrCondition`
+
+Ces classes permettent de représenter des formules logiques récursives.
+
+Par exemple, un portail peut être ouvert si :
+
+```yaml
+open_if:
+  switch_is_on: first
