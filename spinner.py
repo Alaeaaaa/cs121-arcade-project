@@ -1,150 +1,147 @@
-from map import Map, GridCell
-from enum import Enum
-from typing import Final
 from dataclasses import dataclass
+from enum import Enum
+
+from map import GridCell, Map
+
 
 class Direction(Enum):
+    # POSITIF : droite pour un spinner horizontal, haut pour un spinner vertical.
     POSITIF = 1
+
+    # NEGATIF : gauche pour un spinner horizontal, bas pour un spinner vertical.
     NEGATIF = -1
+
 
 @dataclass
 class Limites:
+    # Limites de déplacement du spinner dans la grille.
     min_x: int
     max_x: int
     min_y: int
     max_y: int
-        
-def compute_spinner_bounds(game_map: Map, x: int, y: int) -> Limites:
 
-    # d'abord je regarde ce qu'il y a dans la case (x,y)
-    # normalement ça doit être un spinner
-    cell = game_map.get(x, y)
-
-    # -----------------------------
-    # cas 1 : spinner horizontal
-    # -----------------------------
-    if cell == GridCell.SPINNER_HORIZONTAL:
-
-        # je pars de la position actuelle
-        min_x = x
-
-        # je regarde vers la gauche
-        # tant que je ne sors pas de la map
-        # et que je ne tombe pas sur un buisson
-        # je continue à reculer
-        while min_x - 1 >= 0 and game_map.get(min_x - 1, y) != GridCell.BUSH:
-            min_x -= 1
-
-        # maintenant je fais pareil mais vers la droite
-        max_x = x
-        while max_x + 1 < game_map.width and game_map.get(max_x + 1, y) != GridCell.BUSH:
-            max_x += 1
-
-        # comme il est horizontal il ne bouge pas sur y
-        return Limites(
-            min_x=min_x,
-            max_x=max_x,
-            min_y=y,
-            max_y=y
-        )
-
-    # -----------------------------
-    # cas 2 : spinner vertical
-    # -----------------------------
-    if cell == GridCell.SPINNER_VERTICAL:
-
-        # même idée mais cette fois on regarde sur y
-
-        # vers le bas
-        min_y = y
-        while min_y - 1 >= 0 and game_map.get(x, min_y - 1) != GridCell.BUSH:
-            min_y -= 1
-
-        # vers le haut
-        max_y = y
-        while max_y + 1 < game_map.height and game_map.get(x, max_y + 1) != GridCell.BUSH:
-            max_y += 1
-
-        # comme il est vertical il ne bouge pas sur x
-        return Limites(
-            min_x=x,
-            max_x=x,
-            min_y=min_y,
-            max_y=max_y
-        )
-
-    # si jamais on appelle la fonction sur une case qui n'est pas un spinner
-    # normalement ça ne devrait pas arriver mais c'est une sécurité
-    raise ValueError("Pas de spinner à cette position")
-
-def find_spinners(game_map: Map) -> list[tuple[int, int]]:
-
-    # ici je vais stocker les positions de tous les spinners trouvés
-    spinners = []
-
-    # je parcours toute la map case par case
-    for x in range(game_map.width):
-        for y in range(game_map.height):
-
-            # je regarde ce qu'il y a dans la case actuelle
-            cell = game_map.get(x, y)
-
-            # si c'est un spinner horizontal ou vertical
-            # alors j'ajoute sa position dans la liste
-            if cell == GridCell.SPINNER_HORIZONTAL or cell == GridCell.SPINNER_VERTICAL:
-                spinners.append((x, y))
-
-    # à la fin je renvoie toutes les positions trouvées
-    return spinners
 
 @dataclass
 class Spinner:
+    # Position actuelle du spinner dans la grille.
     x: int
     y: int
-    horizontal: bool #si faux donc il est vertical
+
+    # True si le spinner bouge horizontalement, False s'il bouge verticalement.
+    horizontal: bool
+
+    # Sens actuel du déplacement : POSITIF ou NEGATIF.
     direction: Direction
+
+    # Zone dans laquelle le spinner a le droit de bouger.
     limites: Limites
 
+
+def is_spinner_cell(cell: GridCell) -> bool:
+    # Vérifie si une case contient un spinner horizontal ou vertical.
+    return cell in {
+        GridCell.SPINNER_HORIZONTAL,
+        GridCell.SPINNER_VERTICAL,
+    }
+
+
+def is_blocking_cell(cell: GridCell) -> bool:
+    # Pour l'instant, un buisson bloque le déplacement d'un spinner.
+    return cell == GridCell.BUSH
+
+
+def is_inside_map(game_map: Map, x: int, y: int) -> bool:
+    # Vérifie si la position (x, y) est encore dans la carte.
+    return 0 <= x < game_map.width and 0 <= y < game_map.height
+
+
+def scan_until_blocked(
+    game_map: Map,
+    x: int,
+    y: int,
+    dx: int,
+    dy: int,
+) -> tuple[int, int]:
+    # Avance depuis (x, y) dans la direction (dx, dy)
+    # jusqu'à sortir de la map ou rencontrer un obstacle.
+    next_x = x + dx
+    next_y = y + dy
+
+    while is_inside_map(game_map, next_x, next_y) and not is_blocking_cell(game_map.get(next_x, next_y)):
+        x = next_x
+        y = next_y
+        next_x += dx
+        next_y += dy
+
+    return x, y
+
+
+def compute_horizontal_bounds(game_map: Map, x: int, y: int) -> Limites:
+    # Cherche la limite à gauche puis la limite à droite.
+    min_x, _ = scan_until_blocked(game_map, x, y, dx=-1, dy=0)
+    max_x, _ = scan_until_blocked(game_map, x, y, dx=1, dy=0)
+
+    return Limites(
+        min_x=min_x,
+        max_x=max_x,
+        min_y=y,
+        max_y=y,
+    )
+
+
+def compute_vertical_bounds(game_map: Map, x: int, y: int) -> Limites:
+    # Cherche la limite en bas puis la limite en haut.
+    _, min_y = scan_until_blocked(game_map, x, y, dx=0, dy=-1)
+    _, max_y = scan_until_blocked(game_map, x, y, dx=0, dy=1)
+
+    return Limites(
+        min_x=x,
+        max_x=x,
+        min_y=min_y,
+        max_y=max_y,
+    )
+
+
+def compute_spinner_bounds(game_map: Map, x: int, y: int) -> Limites:
+    # Calcule les limites selon le type de spinner présent à la position (x, y).
+    cell = game_map.get(x, y)
+
+    if cell == GridCell.SPINNER_HORIZONTAL:
+        return compute_horizontal_bounds(game_map, x, y)
+
+    if cell == GridCell.SPINNER_VERTICAL:
+        return compute_vertical_bounds(game_map, x, y)
+
+    # Sécurité : cette fonction doit être appelée seulement sur une case spinner.
+    raise ValueError("Pas de spinner à cette position")
+
+
+def find_spinners(game_map: Map) -> list[tuple[int, int]]:
+    # Parcourt toute la carte et retourne les positions des spinners.
+    return [
+        (x, y)
+        for y in range(game_map.height)
+        for x in range(game_map.width)
+        if is_spinner_cell(game_map.get(x, y))
+    ]
+
+
+def create_spinner(game_map: Map, x: int, y: int) -> Spinner:
+    # Crée un objet Spinner à partir de sa position dans la grille.
+    cell = game_map.get(x, y)
+
+    return Spinner(
+        x=x,
+        y=y,
+        horizontal=(cell == GridCell.SPINNER_HORIZONTAL),
+        direction=Direction.POSITIF,
+        limites=compute_spinner_bounds(game_map, x, y),
+    )
+
+
 def create_spinners(game_map: Map) -> list[Spinner]:
-
-    # ici je vais stocker tous les objets Spinner que je vais créer
-    spinners = []
-
-    # je récupère d'abord les positions de tous les spinners dans la map
-    positions = find_spinners(game_map)
-
-    # je parcours chaque position trouvée
-    for x, y in positions:
-
-        # je regarde ce qu'il y a dans cette case
-        cell = game_map.get(x, y)
-
-        # je calcule les limites du spinner à partir de la map
-        limites = compute_spinner_bounds(game_map, x, y)
-
-        # ici je veux juste savoir s'il est horizontal ou pas
-        # si la case est un spinner horizontal -> True
-        # sinon ce sera False donc vertical
-        horizontal = (cell == GridCell.SPINNER_HORIZONTAL)
-
-        # d'après l'énoncé :
-        # - spinner horizontal commence vers la droite
-        # - spinner vertical commence vers le haut
-        # dans les deux cas ça correspond au sens positif
-        direction = Direction.POSITIF
-
-        # maintenant je crée l'objet Spinner avec toutes ses infos
-        spinner = Spinner(
-            x=x,
-            y=y,
-            horizontal=horizontal,
-            direction=direction,
-            limites=limites
-        )
-
-        # j'ajoute ce spinner dans la liste finale
-        spinners.append(spinner)
-
-    # à la fin je renvoie la liste de tous les spinners créés
-    return spinners
-
+    # Crée tous les spinners présents dans la map.
+    return [
+        create_spinner(game_map, x, y)
+        for x, y in find_spinners(game_map)
+    ]
