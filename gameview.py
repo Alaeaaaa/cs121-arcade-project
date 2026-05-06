@@ -1,83 +1,147 @@
+from enum import Enum
 from typing import Final
-import arcade
 import math
+import random
 
-from constants import *
-from textures import *
+import arcade
 
-from map import Map, GridCell
-from spinner import create_spinners, Direction as SpinnerDirection, Spinner
-from player import Player
+from constants import (
+    MAX_WINDOW_HEIGHT,
+    MAX_WINDOW_WIDTH,
+    SCALE,
+    SPINNER_MOVEMENT_SPEED,
+    TILE_SIZE,
+)
+from textures import (
+    ANIMATION_BAT,
+    ANIMATION_CRYSTAL,
+    ANIMATION_PLAYER_IDLE_DOWN,
+    ANIMATION_SPINNER,
+    SOUND_COIN,
+    TEXTURE_BUSH,
+    TEXTURE_GRASS,
+    TEXTURE_HOLE,
+)
+
+from map import GridCell, Map
 from direction import Direction
+from player import Player
+from spinner import Direction as SpinnerDirection
+from spinner import Spinner, create_spinners
+from bat import BAT_DIRECTION_CHANGE, Bat, create_bats
 from boomerang import Boomerang, BoomerangState
 from sword import Sword, SwordState
-from bat import *
-from enum import Enum
+
+
+# ==================================================
+# Constantes propres à GameView
+# ==================================================
+# Ces constantes évitent d'avoir des nombres "magiques" dans le code.
+# Par exemple, écrire BOOMERANG_SPEED est plus clair qu'écrire 8 partout.
+
+BOOMERANG_SPEED: Final[int] = 8
+BOOMERANG_MAX_DISTANCE: Final[int] = 8 * TILE_SIZE
+BOOMERANG_CATCH_DISTANCE: Final[int] = 8
+
+SWORD_ATTACK_DURATION: Final[float] = 0.3
+
+HOLE_DEATH_DISTANCE: Final[int] = 16
 
 
 def grid_to_pixels(i: int) -> int:
-    """
-    Cette fonction sert juste à convertir une coordonnée de grille en pixels.
-    Par exemple, si une case est à x = 3 dans la map, ça me donne la vraie
-    position en pixels au centre de cette case.
-    """
-    return i * TILE_SIZE + (TILE_SIZE // 2)
+    # La map utilise des coordonnées de grille : 0, 1, 2, 3, ...
+    # Arcade utilise des coordonnées en pixels.
+    #
+    # Exemple avec TILE_SIZE = 64 :
+    # case 0 -> centre à 32 pixels
+    # case 1 -> centre à 96 pixels
+    #
+    # On ajoute TILE_SIZE // 2 car Arcade place les sprites par leur centre.
+    return i * TILE_SIZE + TILE_SIZE // 2
+
 
 class ActiveWeapon(Enum):
+    # Cette enum indique quelle arme est actuellement sélectionnée.
+    # Le joueur peut changer d'arme avec la touche R.
     BOOMERANG = 1
     SWORD = 2
 
-class GameView(arcade.View):
-    """Main in-game view."""
 
-    # Ici je déclare les attributs principaux de ma vue.
-    # Ce n'est pas obligatoire pour que le code marche, mais ça aide à rendre
-    # le code plus lisible et plus propre.
+class GameView(arcade.View):
+    # GameView est la vue principale du jeu.
+    #
+    # Son rôle :
+    # - créer le monde
+    # - afficher le monde
+    # - lire le clavier
+    # - mettre à jour les objets à chaque frame
+    # - gérer les collisions
+
     world_width: Final[int]
     world_height: Final[int]
+
     player: Final[Player]
     player_list: Final[arcade.SpriteList[Player]]
+
     grounds: Final[arcade.SpriteList[arcade.Sprite]]
     walls: Final[arcade.SpriteList[arcade.Sprite]]
     crystals: Final[arcade.SpriteList[arcade.TextureAnimationSprite]]
     holes: Final[arcade.SpriteList[arcade.Sprite]]
-    score: int
+
     spinners: list[Spinner]
     spinner_sprites: arcade.SpriteList[arcade.TextureAnimationSprite]
-    active_weapon : ActiveWeapon
+
+    bats: list[Bat]
+    bat_sprites: arcade.SpriteList[arcade.TextureAnimationSprite]
+
+    active_weapon: ActiveWeapon
     boomerang: Boomerang
     boomerang_list: arcade.SpriteList[arcade.TextureAnimationSprite]
-    sword : Sword
-    sword_list : arcade.SpriteList[arcade.TextureAnimationSprite]
+
+    sword: Sword
+    sword_list: arcade.SpriteList[arcade.TextureAnimationSprite]
+
     physics_engine: Final[arcade.PhysicsEngineSimple]
     camera: Final[arcade.camera.Camera2D]
     ui_camera: Final[arcade.camera.Camera2D]
 
-    def __init__(self, map: Map) -> None:
-        # Toujours commencer par initialiser la vue arcade.
+    def __init__(self, game_map: Map) -> None:
+        # Initialisation obligatoire de arcade.View.
         super().__init__()
 
-        # Je garde la map en mémoire car j'en ai besoin à plusieurs endroits
-        # (position initiale du joueur, taille du monde, contenu des cases, etc.)
-        self.map = map
+        # On garde la map, car elle sert à créer tout le jeu :
+        # taille du monde, joueur, murs, cristaux, ennemis, etc.
+        self.map = game_map
 
-        # Couleur de fond du jeu
+        # État général du jeu.
         self.background_color = arcade.csscolor.CORNFLOWER_BLUE
-
-        # Score de départ
         self.score = 0
 
-        # Taille du monde en pixels
-        # Je pars de la taille de la map en nombre de cases,
-        # puis je multiplie par TILE_SIZE.
+        # La map donne une taille en cases.
+        # Le monde Arcade a besoin d'une taille en pixels.
         self.world_width = self.map.width * TILE_SIZE
         self.world_height = self.map.height * TILE_SIZE
 
-        # =========================
-        # Création du joueur
-        # =========================
-        # Je crée le joueur à sa position de départ dans la map.
-        # Au début il regarde vers le bas, donc je mets l'animation idle down.
+        # Générateur aléatoire utilisé pour les chauves-souris.
+        self.random = random.Random(None)
+
+        # Le constructeur reste court.
+        # Chaque ligne prépare une grande partie du jeu.
+        self._setup_player()
+        self._setup_weapons()
+        self._setup_world()
+        self._setup_spinners()
+        self._setup_bats()
+        self._setup_keyboard()
+        self._setup_physics_and_cameras()
+
+    # ==================================================
+    # Setup général du jeu
+    # ==================================================
+
+    def _setup_player(self) -> None:
+        # On crée le joueur à sa position de départ.
+        # La position de départ est stockée dans la map en coordonnées de grille.
         self.player = Player(
             animation=ANIMATION_PLAYER_IDLE_DOWN,
             scale=SCALE,
@@ -85,227 +149,180 @@ class GameView(arcade.View):
             center_y=grid_to_pixels(self.map.player_start_y),
         )
 
-        # Je mets le joueur dans une SpriteList pour pouvoir le dessiner facilement.
+        # Même s'il n'y a qu'un seul joueur, Arcade le dessine plus facilement
+        # s'il est dans une SpriteList.
         self.player_list = arcade.SpriteList()
         self.player_list.append(self.player)
 
-        # =========================
-        # Création du boomerang
-        # =========================
-        # Je crée le boomerang au départ à la position du joueur.
-        # Il est créé tout de suite, mais son état initial est INACTIVE,
-        # donc il ne sera pas affiché tant qu'on ne l'a pas lancé.
-        self.boomerang = Boomerang(
-            center_x=grid_to_pixels(self.map.player_start_x),
-            center_y=grid_to_pixels(self.map.player_start_y),
-        )
-        self.sword = Sword(
-            center_x=grid_to_pixels(self.map.player_start_x),
-            center_y=grid_to_pixels(self.map.player_start_y),
-        )
-
-        # Même idée que pour le joueur : je mets dans une liste de sprites le boomerang et l'épée
-        self.boomerang_list = arcade.SpriteList()
-        self.boomerang_list.append(self.boomerang)
-        self.sword_list= arcade.SpriteList()
-        self.sword_list.append(self.sword)
-
-        # l'arme active au début est le boomerang, c'est cebque je précise ici :
+    def _setup_weapons(self) -> None:
+        # Au début du jeu, l'arme sélectionnée est le boomerang.
         self.active_weapon = ActiveWeapon.BOOMERANG
 
-        # =========================
-        # Création du décor et des objets du monde
-        # =========================
+        # Les deux armes existent dès le début, mais elles ne sont pas forcément
+        # visibles. Leur état décide si on les dessine ou pas.
+        self.boomerang = Boomerang(
+            center_x=self.player.center_x,
+            center_y=self.player.center_y,
+        )
+
+        self.sword = Sword(
+            center_x=self.player.center_x,
+            center_y=self.player.center_y,
+        )
+
+        # Comme pour le joueur, on met les armes dans des SpriteList pour
+        # pouvoir les dessiner facilement.
+        self.boomerang_list = arcade.SpriteList()
+        self.boomerang_list.append(self.boomerang)
+
+        self.sword_list = arcade.SpriteList()
+        self.sword_list.append(self.sword)
+
+    def _setup_world(self) -> None:
+        # Ces listes contiennent les éléments du décor.
         self.grounds = arcade.SpriteList(use_spatial_hash=True)
         self.walls = arcade.SpriteList(use_spatial_hash=True)
         self.crystals = arcade.SpriteList()
         self.holes = arcade.SpriteList()
 
-        # Ici je parcours toute la map case par case.
-        for x in range(self.map.width):
-            for y in range(self.map.height):
+        # On parcourt toute la map case par case.
+        # Pour chaque case, on crée les sprites correspondants.
+        for y in range(self.map.height):
+            for x in range(self.map.width):
+                self._create_cell_sprites(x, y)
 
-                # Dans tous les cas, je mets d'abord de l'herbe au sol.
-                sprite = arcade.Sprite(
-                    TEXTURE_GRASS,
-                    scale=SCALE,
-                    center_x=grid_to_pixels(x),
-                    center_y=grid_to_pixels(y),
-                )
-                self.grounds.append(sprite)
-
-                # Ensuite je regarde ce qu'il y a réellement dans la case.
-                cell = self.map.get(x, y)
-
-                # Si c'est un buisson, je crée un mur.
-                if cell == GridCell.BUSH:
-                    sprite = arcade.Sprite(
-                        TEXTURE_BUSH,
-                        scale=SCALE,
-                        center_x=grid_to_pixels(x),
-                        center_y=grid_to_pixels(y),
-                    )
-                    self.walls.append(sprite)
-
-                # Si c'est un cristal, je crée un sprite animé.
-                elif cell == GridCell.CRYSTAL:
-                    sprite = arcade.TextureAnimationSprite(
-                        animation=ANIMATION_CRYSTAL,
-                        scale=SCALE,
-                        center_x=grid_to_pixels(x),
-                        center_y=grid_to_pixels(y),
-                    )
-                    self.crystals.append(sprite)
-
-                # Si c'est un trou, je crée son sprite.
-                elif cell == GridCell.HOLE:
-                    sprite = arcade.Sprite(
-                        TEXTURE_HOLE,
-                        scale=SCALE,
-                        center_x=grid_to_pixels(x),
-                        center_y=grid_to_pixels(y),
-                    )
-                    self.holes.append(sprite)
-
-        # =========================
-        # Création des spinners
-        # =========================
-        # Ici create_spinners(self.map) crée la partie logique des spinners
-        # (leur position, leur direction, leurs limites, etc.)
+    def _setup_spinners(self) -> None:
+        # Les spinners ont deux parties :
+        # - self.spinners : la logique du spinner
+        # - self.spinner_sprites : l'image affichée du spinner
         self.spinners = create_spinners(self.map)
-
-        # Ensuite je crée leur partie visuelle : les sprites animés affichés à l'écran.
         self.spinner_sprites = arcade.SpriteList()
-        for spinner in self.spinners:
-            sprite = arcade.TextureAnimationSprite(
-                animation=ANIMATION_SPINNER,
-                scale=SCALE,
-                center_x=grid_to_pixels(spinner.x),
-                center_y=grid_to_pixels(spinner.y),
-            )
-            self.spinner_sprites.append(sprite)
-        # =========================
-        # Création des chauve-souris
-        # =========================
-        # Ici create_bats(self.map) crée la partie logique des bats
-        # (leur position, leur direction, leurs limites, etc.)
-        self.val = random.Random(None)
-        self.bats = create_bats(self.map, self.val)
-        # Ensuite, je crée la partie visuelle : sprites.
-        self.bat_sprites = arcade.SpriteList()
-        for bat in self.bats :
-            bat_sprite = arcade.TextureAnimationSprite(
-                animation = ANIMATION_BAT,
-                scale= SCALE,
-                center_x=grid_to_pixels(bat.start_x),
-                center_y=grid_to_pixels(bat.start_y),
-            )
-            self.bat_sprites.append(bat_sprite)
 
-        # =========================
-        # État du clavier
-        # =========================
-        # Ces booléens me servent à savoir quelles touches sont actuellement enfoncées.
+        for spinner in self.spinners:
+            self.spinner_sprites.append(
+                self._create_animated_sprite(
+                    animation=ANIMATION_SPINNER,
+                    x=spinner.x,
+                    y=spinner.y,
+                )
+            )
+
+    def _setup_bats(self) -> None:
+        # Même idée que les spinners :
+        # - self.bats : logique
+        # - self.bat_sprites : affichage
+        self.bats = create_bats(self.map, self.random)
+        self.bat_sprites = arcade.SpriteList()
+
+        for bat in self.bats:
+            self.bat_sprites.append(
+                self._create_animated_sprite(
+                    animation=ANIMATION_BAT,
+                    x=bat.start_x,
+                    y=bat.start_y,
+                )
+            )
+
+    def _setup_keyboard(self) -> None:
+        # Ces booléens mémorisent les touches actuellement enfoncées.
+        # On ne déplace pas directement le joueur ici.
+        # On stocke seulement l'état du clavier.
         self.right = False
         self.left = False
         self.up = False
         self.down = False
 
-        # =========================
-        # Physique et caméras
-        # =========================
+    def _setup_physics_and_cameras(self) -> None:
         # Le moteur physique empêche le joueur de traverser les murs.
         self.physics_engine = arcade.PhysicsEngineSimple(self.player, self.walls)
 
-        # camera = caméra du monde
-        # ui_camera = caméra fixe pour l'interface (score)
+        # camera : caméra du monde, elle suit le joueur.
+        # ui_camera : caméra de l'interface, elle reste fixe.
         self.camera = arcade.camera.Camera2D()
         self.ui_camera = arcade.camera.Camera2D()
 
-    def _remove_spinner_sprite(self, spinner_sprite: arcade.Sprite) -> None:
-        """
-        Cette méthode enlève un spinner à la fois du visuel et de la logique.
-        J'en ai besoin quand une arme tue un spinner.
+    # ==================================================
+    # Petites fonctions de création de sprites
+    # ==================================================
 
-        Pourquoi enlever dans les deux listes ?
-        - self.spinner_sprites = partie affichée
-        - self.spinners = partie logique
-        Si j'enlevais seulement le sprite, j'aurais un décalage entre les deux.
-        """
-        for i, sprite in enumerate(self.spinner_sprites):
-            if sprite == spinner_sprite:
-                self.spinner_sprites.pop(i)
-                self.spinners.pop(i)
-                return
+    def _create_static_sprite(
+        self,
+        texture: arcade.Texture,
+        x: int,
+        y: int,
+    ) -> arcade.Sprite:
+        # Crée un sprite simple à partir d'une texture.
+        # x et y sont en coordonnées de grille, donc on les convertit en pixels.
+        return arcade.Sprite(
+            texture,
+            scale=SCALE,
+            center_x=grid_to_pixels(x),
+            center_y=grid_to_pixels(y),
+        )
 
-    def _remove_bat_sprite (self, bat_sprite : arcade.TextureAnimationSprite):
-        """
-        Cette méthode enlève une chauve-souris à la fois du visuel et de la logique.
-        J'en ai besoin quand une arme en tue une.
+    def _create_animated_sprite(
+        self,
+        animation: arcade.TextureAnimation,
+        x: int,
+        y: int,
+    ) -> arcade.TextureAnimationSprite:
+        # Crée un sprite animé à partir d'une animation.
+        return arcade.TextureAnimationSprite(
+            animation=animation,
+            scale=SCALE,
+            center_x=grid_to_pixels(x),
+            center_y=grid_to_pixels(y),
+        )
 
-        Pourquoi enlever dans les deux listes ?
-        - self.bat_sprites = partie affichée
-        - self.bats = partie logique
-        Si j'enlevais seulement le sprite, j'aurais un décalage entre les deux.
-        """
-        for i, sprite in enumerate(self.bat_sprites):
-            if sprite == bat_sprite:
-                self.bat_sprites.pop(i)
-                self.bats.pop(i)
-                return
+    def _create_cell_sprites(self, x: int, y: int) -> None:
+        # Chaque case reçoit toujours de l'herbe.
+        # Ensuite, selon le type de case, on ajoute un élément par-dessus.
+        self.grounds.append(
+            self._create_static_sprite(TEXTURE_GRASS, x, y)
+        )
+
+        cell = self.map.get(x, y)
+
+        if cell == GridCell.BUSH:
+            self.walls.append(
+                self._create_static_sprite(TEXTURE_BUSH, x, y)
+            )
+
+        elif cell == GridCell.CRYSTAL:
+            self.crystals.append(
+                self._create_animated_sprite(ANIMATION_CRYSTAL, x, y)
+            )
+
+        elif cell == GridCell.HOLE:
+            self.holes.append(
+                self._create_static_sprite(TEXTURE_HOLE, x, y)
+            )
+
+    # ==================================================
+    # Méthodes Arcade principales
+    # ==================================================
 
     def on_show_view(self) -> None:
-        """
-        Cette méthode est appelée automatiquement quand cette vue devient active.
-        Ici j'ajuste la taille de la fenêtre à la taille du monde,
-        sans dépasser les dimensions maximales prévues.
-        """
+        # Cette méthode est appelée quand la vue devient active.
+        # On adapte la fenêtre à la taille du monde, sans dépasser les max.
         self.window.width = min(MAX_WINDOW_WIDTH, self.world_width)
         self.window.height = min(MAX_WINDOW_HEIGHT, self.world_height)
 
     def on_draw(self) -> None:
-        """Cette méthode dessine tout ce qu'on voit à l'écran."""
+        # Cette méthode dessine tout à l'écran.
+        # Arcade l'appelle automatiquement.
         self.clear()
 
-        # =========================
-        # Dessin du monde
-        # =========================
-        # Avec la caméra du monde, je dessine tout ce qui se déplace dans le jeu.
+        # D'abord, on dessine le monde avec la caméra du monde.
         with self.camera.activate():
-            self.grounds.draw()
-            self.walls.draw()
-            self.holes.draw()
-            self.player_list.draw()
-            self.crystals.draw()
-            self.spinner_sprites.draw()
-            self.bat_sprites.draw()
+            self._draw_world()
 
-            # Le boomerang n'est dessiné que s'il n'est pas inactif.
-            # Donc au début il n'apparaît pas.
-            if self.boomerang.state != BoomerangState.INACTIVE:
-                self.boomerang_list.draw()
-            if self.sword.state == SwordState.ACTIVE :
-                self.sword_list.draw()
-
-        # =========================
-        # Dessin de l'interface
-        # =========================
-        # Ici j'utilise une autre caméra pour que le score reste fixe à l'écran.
+        # Ensuite, on dessine l'interface avec une caméra fixe.
         with self.ui_camera.activate():
-            score_text = arcade.Text(
-                f"Score: {self.score}",
-                10,
-                10,
-                arcade.color.WHITE,
-                20
-            )
-            score_text.draw()
+            self._draw_ui()
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
-        """
-        Cette méthode est appelée quand une touche est enfoncée.
-        Je mets à jour l'état du clavier et je gère aussi le lancement du boomerang.
-        """
+        # Cette méthode est appelée quand une touche est enfoncée.
         match symbol:
             case arcade.key.RIGHT:
                 self.right = True
@@ -315,64 +332,18 @@ class GameView(arcade.View):
                 self.up = True
             case arcade.key.DOWN:
                 self.down = True
-            # je code ma touche R :
             case arcade.key.R:
-                # je limite son usage à : les deux armes sont inactives, pour éviter un changement alors quye le boomerang est en plein vol par exemple
-                if self.boomerang.state==BoomerangState.INACTIVE and self.sword.state==SwordState.INACTIVE :
-                    # le changement se fait naturellement d'une arme à l'autre :
-                    if self.active_weapon == ActiveWeapon.BOOMERANG :
-                        self.active_weapon = ActiveWeapon.SWORD
-                    else :
-                        self.active_weapon = ActiveWeapon.BOOMERANG
-
-
+                self._switch_weapon()
             case arcade.key.D:
-                if self.active_weapon== ActiveWeapon.BOOMERANG :
-                    # Le boomerang ne peut être lancé que s'il est actuellement inactif.
-                    if self.boomerang.state == BoomerangState.INACTIVE:
-                        # Il passe à l'état LAUNCHING
-                        self.boomerang.state = BoomerangState.LAUNCHING
-
-                        # Il part depuis la position actuelle du joueur
-                        self.boomerang.position = self.player.position
-
-                        # Il part dans la direction dans laquelle regarde le joueur
-                        self.boomerang.direction = self.player.direction
-
-                        # Je remets la distance parcourue à zéro pour ce nouveau lancer
-                        self.boomerang.distance_travelled = 0
-                elif self.active_weapon == ActiveWeapon.SWORD :
-                    # L'épée ne peut être utilisée que si elle est actuellement inactive ET le boomerang aussi :
-                    if self.sword.state == SwordState.INACTIVE and self.boomerang.state== BoomerangState.INACTIVE :
-
-                        # elle se situe à la position actuelle du joueur
-                        self.sword.position = self.player.position
-
-                        # elle est orientée selon la direction dans laquelle regarde le joueur
-                        self.sword.direction = self.player.direction
-
-                        # je dois mettre à jour l'animation selon la nouvelle direction :
-                        self.sword.update_direction_animation()
-
-                        # elle passe à l'état actif :
-                        self.sword.state = SwordState.ACTIVE
-
-                        # Je remets le temps écoulé à 0 :
-                        self.sword.time = 0
-
+                self._use_active_weapon()
             case arcade.key.ESCAPE:
-                # Permet de relancer la partie
-                new_view = GameView(self.map)
-                self.window.show_view(new_view)
+                self._restart_game()
 
-        # Après chaque changement de touche, je recalcule le mouvement du joueur.
-        self.player.update_movement(self.right, self.left, self.up, self.down)
+        # Après chaque touche, on recalcule le mouvement du joueur.
+        self._update_player_movement()
 
     def on_key_release(self, symbol: int, modifiers: int) -> None:
-        """
-        Cette méthode est appelée quand une touche est relâchée.
-        Je remets le booléen correspondant à False.
-        """
+        # Cette méthode est appelée quand une touche est relâchée.
         match symbol:
             case arcade.key.RIGHT:
                 self.right = False
@@ -383,301 +354,605 @@ class GameView(arcade.View):
             case arcade.key.DOWN:
                 self.down = False
 
-        # Je recalcule le mouvement après le relâchement d'une touche.
-        self.player.update_movement(self.right, self.left, self.up, self.down)
+        self._update_player_movement()
 
     def on_update(self, delta_time: float) -> None:
-        """
-        Cette méthode est appelée à chaque frame.
-        C'est vraiment ici que le jeu "avance" :
-        mouvements, animations, collisions, score, boomerang, etc.
-        """
-        # =========================
-        # Mise à jour du joueur
-        # =========================
+        # Cette méthode est appelée à chaque frame.
+        # C'est elle qui fait avancer le jeu.
+        self._update_player()
+        self._update_animations()
+        self._update_enemies()
+        self._update_weapons(delta_time)
+        self._handle_player_collisions()
+
+        # La caméra suit le joueur.
+        self.camera.position = self.player.position
+
+    # ==================================================
+    # Dessin
+    # ==================================================
+
+    def _draw_world(self) -> None:
+        # L'ordre de dessin est important.
+        # On dessine d'abord le sol, puis les objets, puis le joueur et les armes.
+        self.grounds.draw()
+        self.walls.draw()
+        self.holes.draw()
+        self.crystals.draw()
+
+        self.spinner_sprites.draw()
+        self.bat_sprites.draw()
+
+        self.player_list.draw()
+
+        # Le boomerang est dessiné seulement s'il est actif.
+        if self.boomerang.state != BoomerangState.INACTIVE:
+            self.boomerang_list.draw()
+
+        # L'épée est dessinée seulement pendant l'attaque.
+        if self.sword.state == SwordState.ACTIVE:
+            self.sword_list.draw()
+
+    def _draw_ui(self) -> None:
+        # L'interface reste fixe à l'écran grâce à ui_camera.
+        score_text = arcade.Text(
+            f"Score: {self.score}",
+            10,
+            10,
+            arcade.color.WHITE,
+            20,
+        )
+        score_text.draw()
+
+    # ==================================================
+    # Clavier et armes
+    # ==================================================
+
+    def _update_player_movement(self) -> None:
+        # On transmet l'état du clavier au joueur.
+        # Le joueur décide ensuite sa vitesse dans player.py.
+        self.player.update_movement(
+            self.right,
+            self.left,
+            self.up,
+            self.down,
+        )
+
+    def _switch_weapon(self) -> None:
+        # On ne change pas d'arme si une arme est déjà utilisée.
+        if not self._all_weapons_are_inactive():
+            return
+
+        if self.active_weapon == ActiveWeapon.BOOMERANG:
+            self.active_weapon = ActiveWeapon.SWORD
+        else:
+            self.active_weapon = ActiveWeapon.BOOMERANG
+
+    def _use_active_weapon(self) -> None:
+        # La touche D utilise l'arme actuellement sélectionnée.
+        if self.active_weapon == ActiveWeapon.BOOMERANG:
+            self._launch_boomerang()
+        elif self.active_weapon == ActiveWeapon.SWORD:
+            self._start_sword_attack()
+
+    def _all_weapons_are_inactive(self) -> bool:
+        # Renvoie True si aucune arme n'est en cours d'utilisation.
+        return (
+            self.boomerang.state == BoomerangState.INACTIVE
+            and self.sword.state == SwordState.INACTIVE
+        )
+
+    def _launch_boomerang(self) -> None:
+        # On peut lancer le boomerang seulement s'il est inactif.
+        if self.boomerang.state != BoomerangState.INACTIVE:
+            return
+
+        # Le boomerang part depuis le joueur.
+        self.boomerang.position = self.player.position
+
+        # Il part dans la direction où regarde le joueur.
+        self.boomerang.direction = self.player.direction
+
+        # On initialise son état de lancement.
+        self.boomerang.state = BoomerangState.LAUNCHING
+        self.boomerang.distance_travelled = 0
+
+    def _start_sword_attack(self) -> None:
+        # L'épée ne peut être utilisée que si les deux armes sont libres.
+        if not self._all_weapons_are_inactive():
+            return
+
+        # L'épée commence sur le joueur et dans sa direction.
+        self.sword.position = self.player.position
+        self.sword.direction = self.player.direction
+        self.sword.update_direction_animation()
+
+        # L'attaque commence.
+        self.sword.state = SwordState.ACTIVE
+        self.sword.time = 0
+
+    # ==================================================
+    # Update général
+    # ==================================================
+
+    def _update_player(self) -> None:
+        # Le moteur physique applique le mouvement du joueur
+        # tout en l'empêchant de traverser les murs.
         self.physics_engine.update()
 
-        # D'abord je choisis la bonne animation en fonction
-        # de la direction et de si le joueur bouge ou non.
+        # On choisit la bonne animation selon la direction et le mouvement.
         self.player.update_direction_animation()
 
-        # Ensuite je fais avancer l'animation.
+        # On fait avancer l'animation.
         self.player.update_animation()
 
-        # Mise à jour des animations des cristaux
+    def _update_animations(self) -> None:
+        # Tous les sprites animés doivent être mis à jour à chaque frame.
         for crystal in self.crystals:
             crystal.update_animation()
 
-        # Mise à jour des animations des spinners
         for spinner_sprite in self.spinner_sprites:
             spinner_sprite.update_animation()
 
-        # Mise à jour de l'animation du boomerang seulement s'il est visible
         if self.boomerang.state != BoomerangState.INACTIVE:
             self.boomerang.update_animation()
 
-        # =========================
-        # Déplacement des spinners
-        # =========================
-        # Ici je fais avancer chaque spinner entre ses limites.
-        # S'il atteint sa limite max, il repart dans l'autre sens, et inversement.
-        for i in range(len(self.spinners)):
-            spinner = self.spinners[i]
-            sprite = self.spinner_sprites[i]
+    def _update_enemies(self) -> None:
+        # Cette méthode regroupe tous les ennemis.
+        self._update_spinners()
+        self._update_bats()
 
-            if spinner.horizontal:
-                if spinner.direction == SpinnerDirection.POSITIF:
-                    sprite.center_x += SPINNER_MOVEMENT_SPEED
+    def _update_weapons(self, delta_time: float) -> None:
+        # Cette méthode regroupe toutes les armes.
+        self._update_boomerang()
+        self._update_sword(delta_time)
 
-                    if sprite.center_x >= grid_to_pixels(spinner.limites.max_x):
-                        sprite.center_x = grid_to_pixels(spinner.limites.max_x)
-                        spinner.direction = SpinnerDirection.NEGATIF
-                else:
-                    sprite.center_x -= SPINNER_MOVEMENT_SPEED
+    # ==================================================
+    # Spinners
+    # ==================================================
 
-                    if sprite.center_x <= grid_to_pixels(spinner.limites.min_x):
-                        sprite.center_x = grid_to_pixels(spinner.limites.min_x)
-                        spinner.direction = SpinnerDirection.POSITIF
+    def _update_spinners(self) -> None:
+        # self.spinners contient la logique.
+        # self.spinner_sprites contient l'affichage.
+        # zip permet de les parcourir ensemble.
+        for spinner, sprite in zip(self.spinners, self.spinner_sprites):
+            self._update_spinner(spinner, sprite)
 
-            else:
-                if spinner.direction == SpinnerDirection.POSITIF:
-                    sprite.center_y += SPINNER_MOVEMENT_SPEED
+    def _update_spinner(
+        self,
+        spinner: Spinner,
+        sprite: arcade.TextureAnimationSprite,
+    ) -> None:
+        # Un spinner est soit horizontal, soit vertical.
+        if spinner.horizontal:
+            self._update_horizontal_spinner(spinner, sprite)
+        else:
+            self._update_vertical_spinner(spinner, sprite)
 
-                    if sprite.center_y >= grid_to_pixels(spinner.limites.max_y):
-                        sprite.center_y = grid_to_pixels(spinner.limites.max_y)
-                        spinner.direction = SpinnerDirection.NEGATIF
-                else:
-                    sprite.center_y -= SPINNER_MOVEMENT_SPEED
+    def _update_horizontal_spinner(
+        self,
+        spinner: Spinner,
+        sprite: arcade.TextureAnimationSprite,
+    ) -> None:
+        # POSITIF = droite, NEGATIF = gauche.
+        if spinner.direction == SpinnerDirection.POSITIF:
+            self._move_spinner_right(spinner, sprite)
+        else:
+            self._move_spinner_left(spinner, sprite)
 
-                    if sprite.center_y <= grid_to_pixels(spinner.limites.min_y):
-                        sprite.center_y = grid_to_pixels(spinner.limites.min_y)
-                        spinner.direction = SpinnerDirection.POSITIF
-        # =========================
-        # Déplacement des chauve-souris
-        # =========================
-        # Ici je fais avancer chaque chauve-souris entre ses limites, à vitesse constante.
-        # Il arrive qu'elle modifie sa direction aléatoirement (comme demandé) pour simuler un mvt naturel.
-        # si elle atteint les limites du rectangle d'action, elle rebondit et changeant de direction, à l'interieur
-        # de la zone d'action toujours.
+    def _update_vertical_spinner(
+        self,
+        spinner: Spinner,
+        sprite: arcade.TextureAnimationSprite,
+    ) -> None:
+        # POSITIF = haut, NEGATIF = bas.
+        if spinner.direction == SpinnerDirection.POSITIF:
+            self._move_spinner_up(spinner, sprite)
+        else:
+            self._move_spinner_down(spinner, sprite)
 
-        # je choisis de parcourir la longueur de la liste, car la liste logique et visuelle ont la mm longueur,
-        # de cette façon je parcours les deux en meme temps.
-        for i in range(len(self.bats)):
-            bat= self.bats[i]
-            bat_sprite = self.bat_sprites[i]
-            # je mets à jour son animation :
-            bat_sprite.update_animation()
-            # et donc, comme j'avance d'un frame, j'actualise leur compteur :
-            bat.frames_direction_change -=1
-            # dès qu'il ne reste plus de frames avant changement, on change de direction :
-            if bat.frames_direction_change <= 0 :
-                # je modifie légèrement l'angle
-                bat.angle+=self.val.uniform(-0.5,0.5)
-                # je remets le compteu rde frames à son état initial :
-                bat.frames_direction_change = BAT_DIRECTION_CHANGE
-            # à présent, je dois calculer le déplacement en fonction de l'angle et de la vitesse
-            # c'est simplement des maths, on emploie des cosinus (horizontal) et des sinus (vertical) comme suit :
-            dx = bat.speed*math.cos(bat.angle)
-            dy = bat.speed*math.sin(bat.angle)
-            # la nouvelle position ainsi caclulée est :
-            new_x = bat_sprite.center_x + dx
-            new_y = bat_sprite.center_y + dy
-            # le problème : on ne sait pas si on sort de la zone, j'y remédie donc comme suit :
-            # d'abord, je convertis les limites de la zone d'action en pixels pour pouvoir comparer :
-            min_x = grid_to_pixels(bat.bounds.min_x)
-            min_y = grid_to_pixels(bat.bounds.min_y)
-            max_x = grid_to_pixels(bat.bounds.max_x)
-            max_y = grid_to_pixels(bat.bounds.max_y)
-            # la première exception est que la nouvelle position horizontale (new_x) est en dehors de l'intervalle :
-            if new_x<min_x or new_x >max_x :
-                # trigonométrie : la chauve-souris repartira dans l'autre sens par inversion du signe du cos
-                bat.angle = math.pi - bat.angle
-                new_x = bat_sprite.center_x + bat.speed*math.cos(bat.angle)
-                new_y = bat_sprite.center_y + bat.speed*math.sin(bat.angle)
-            # il reste à vérifier la même chose mais verticalement :
-            if new_y < min_y or new_y > max_y :
-                # encore une fois, c'est de la trigo, il faut qu'on inverse le signe du sin mais garder le cos qui est bon.
-                bat.angle = - bat.angle
-                new_x = bat_sprite.center_x + bat.speed*math.cos(bat.angle)
-                new_y = bat_sprite.center_y + bat.speed*math.sin(bat.angle)
-            # maintenant qu'on a tout vérifié, on peut mettre à jour la position de la chauve-souris :
-            bat_sprite.center_x = new_x
-            bat_sprite.center_y = new_y
+    def _move_spinner_right(
+        self,
+        spinner: Spinner,
+        sprite: arcade.TextureAnimationSprite,
+    ) -> None:
+        sprite.center_x += SPINNER_MOVEMENT_SPEED
 
+        right_limit = grid_to_pixels(spinner.limites.max_x)
 
+        if sprite.center_x >= right_limit:
+            sprite.center_x = right_limit
+            spinner.direction = SpinnerDirection.NEGATIF
 
-        # =========================
-        # Gestion du boomerang : phase de lancement
-        # =========================
+    def _move_spinner_left(
+        self,
+        spinner: Spinner,
+        sprite: arcade.TextureAnimationSprite,
+    ) -> None:
+        sprite.center_x -= SPINNER_MOVEMENT_SPEED
+
+        left_limit = grid_to_pixels(spinner.limites.min_x)
+
+        if sprite.center_x <= left_limit:
+            sprite.center_x = left_limit
+            spinner.direction = SpinnerDirection.POSITIF
+
+    def _move_spinner_up(
+        self,
+        spinner: Spinner,
+        sprite: arcade.TextureAnimationSprite,
+    ) -> None:
+        sprite.center_y += SPINNER_MOVEMENT_SPEED
+
+        top_limit = grid_to_pixels(spinner.limites.max_y)
+
+        if sprite.center_y >= top_limit:
+            sprite.center_y = top_limit
+            spinner.direction = SpinnerDirection.NEGATIF
+
+    def _move_spinner_down(
+        self,
+        spinner: Spinner,
+        sprite: arcade.TextureAnimationSprite,
+    ) -> None:
+        sprite.center_y -= SPINNER_MOVEMENT_SPEED
+
+        bottom_limit = grid_to_pixels(spinner.limites.min_y)
+
+        if sprite.center_y <= bottom_limit:
+            sprite.center_y = bottom_limit
+            spinner.direction = SpinnerDirection.POSITIF
+
+    # ==================================================
+    # Chauves-souris
+    # ==================================================
+
+    def _update_bats(self) -> None:
+        # Chaque bat a une partie logique et un sprite correspondant.
+        for bat, bat_sprite in zip(self.bats, self.bat_sprites):
+            self._update_bat(bat, bat_sprite)
+
+    def _update_bat(
+        self,
+        bat: Bat,
+        bat_sprite: arcade.TextureAnimationSprite,
+    ) -> None:
+        # 1. L'animation visuelle avance.
+        bat_sprite.update_animation()
+
+        # 2. La bat peut changer légèrement de direction.
+        self._maybe_change_bat_direction(bat)
+
+        # 3. On calcule la position qu'elle veut atteindre.
+        new_x, new_y = self._compute_next_bat_position(bat, bat_sprite)
+
+        # 4. Si cette position sort de sa zone, on fait rebondir la bat.
+        new_x, new_y = self._bounce_bat_if_needed(
+            bat,
+            bat_sprite,
+            new_x,
+            new_y,
+        )
+
+        # 5. On applique la position finale.
+        bat_sprite.center_x = new_x
+        bat_sprite.center_y = new_y
+
+    def _maybe_change_bat_direction(self, bat: Bat) -> None:
+        # Chaque bat a un compteur.
+        # Quand le compteur arrive à 0, elle change un peu d'angle.
+        bat.frames_direction_change -= 1
+
+        if bat.frames_direction_change <= 0:
+            bat.angle += self.random.uniform(-0.5, 0.5)
+            bat.frames_direction_change = BAT_DIRECTION_CHANGE
+
+    def _compute_next_bat_position(
+        self,
+        bat: Bat,
+        bat_sprite: arcade.TextureAnimationSprite,
+    ) -> tuple[float, float]:
+        # La bat avance selon un angle.
+        #
+        # cos(angle) donne la partie horizontale du mouvement.
+        # sin(angle) donne la partie verticale du mouvement.
+        dx = bat.speed * math.cos(bat.angle)
+        dy = bat.speed * math.sin(bat.angle)
+
+        return bat_sprite.center_x + dx, bat_sprite.center_y + dy
+
+    def _bounce_bat_if_needed(
+        self,
+        bat: Bat,
+        bat_sprite: arcade.TextureAnimationSprite,
+        new_x: float,
+        new_y: float,
+    ) -> tuple[float, float]:
+        # Les limites de bat.bounds sont en coordonnées de grille.
+        # On les convertit en pixels pour comparer avec la position du sprite.
+        min_x = grid_to_pixels(int(bat.bounds.min_x))
+        max_x = grid_to_pixels(int(bat.bounds.max_x))
+        min_y = grid_to_pixels(int(bat.bounds.min_y))
+        max_y = grid_to_pixels(int(bat.bounds.max_y))
+
+        # Si la bat sort à gauche ou à droite,
+        # on inverse la composante horizontale de son angle.
+        if new_x < min_x or new_x > max_x:
+            bat.angle = math.pi - bat.angle
+            new_x, new_y = self._compute_next_bat_position(bat, bat_sprite)
+
+        # Si la bat sort en haut ou en bas,
+        # on inverse la composante verticale de son angle.
+        if new_y < min_y or new_y > max_y:
+            bat.angle = -bat.angle
+            new_x, new_y = self._compute_next_bat_position(bat, bat_sprite)
+
+        return new_x, new_y
+
+    # ==================================================
+    # Boomerang
+    # ==================================================
+
+    def _update_boomerang(self) -> None:
+        # Le boomerang est une machine à états :
+        # INACTIVE -> LAUNCHING -> RETURNING -> INACTIVE
         if self.boomerang.state == BoomerangState.LAUNCHING:
+            self._update_boomerang_launching()
 
-            # Pendant le lancement, le boomerang part en ligne droite
-            # dans la direction choisie au moment où on a appuyé sur D.
-            if self.boomerang.direction == Direction.NORTH:
-                self.boomerang.center_y += 8
-            elif self.boomerang.direction == Direction.SOUTH:
-                self.boomerang.center_y -= 8
-            elif self.boomerang.direction == Direction.EAST:
-                self.boomerang.center_x += 8
-            elif self.boomerang.direction == Direction.WEST:
-                self.boomerang.center_x -= 8
+        elif self.boomerang.state == BoomerangState.RETURNING:
+            self._update_boomerang_returning()
 
-            # À chaque frame, j'ajoute 8 pixels à la distance parcourue.
-            self.boomerang.distance_travelled += 8
+    def _update_boomerang_launching(self) -> None:
+        # Pendant cette phase, le boomerang part en ligne droite.
+        self._move_boomerang_forward()
+        self.boomerang.distance_travelled += BOOMERANG_SPEED
 
-            # Si le boomerang a parcouru l'équivalent de 8 cases,
-            # il arrête de s'éloigner et passe en retour.
-            if self.boomerang.distance_travelled >= 8 * TILE_SIZE:
-                self.boomerang.state = BoomerangState.RETURNING
+        # Le boomerang revient s'il a atteint sa distance maximale.
+        if self.boomerang.distance_travelled >= BOOMERANG_MAX_DISTANCE:
+            self._start_boomerang_return()
 
-            # S'il touche un mur pendant le lancement, il passe aussi en retour.
-            colliding_walls = arcade.check_for_collision_with_list(self.boomerang, self.walls)
-            if len(colliding_walls) > 0:
-                self.boomerang.state = BoomerangState.RETURNING
+        # Le boomerang revient aussi s'il touche un mur.
+        if self._boomerang_hits_wall():
+            self._start_boomerang_return()
 
-            # S'il touche un monstre pendant le lancement :
-            # - le monstre meurt
-            # - le boomerang repart en retour
-            colliding_spinners_with_boomerang = arcade.check_for_collision_with_list(
-                self.boomerang, self.spinner_sprites
-            )
-            colliding_bats_with_boomerang = arcade.check_for_collision_with_list(
-                self.boomerang, self.bat_sprites
-            )
-            # attention aux monstres : si le boomerang en touche un, il doit retourner !
-            # j'utilise donc if/elif comme ça il retourne dès qu'il en touche un (soit bat, soit spinner, pas les deux)
-            if len(colliding_bats_with_boomerang) > 0:
-                for bat_sprite in colliding_bats_with_boomerang:
-                    self._remove_bat_sprite(bat_sprite)
-                self.boomerang.state = BoomerangState.RETURNING
+        # Le boomerang revient aussi s'il touche un ennemi.
+        if self._boomerang_hits_enemy():
+            self._start_boomerang_return()
 
-            elif len(colliding_spinners_with_boomerang) > 0:
-                for spinner_sprite in colliding_spinners_with_boomerang:
-                    self._remove_spinner_sprite(spinner_sprite)
-                self.boomerang.state = BoomerangState.RETURNING
+    def _move_boomerang_forward(self) -> None:
+        # La direction du boomerang a été copiée depuis le joueur au moment du lancer.
+        if self.boomerang.direction == Direction.NORTH:
+            self.boomerang.center_y += BOOMERANG_SPEED
+        elif self.boomerang.direction == Direction.SOUTH:
+            self.boomerang.center_y -= BOOMERANG_SPEED
+        elif self.boomerang.direction == Direction.EAST:
+            self.boomerang.center_x += BOOMERANG_SPEED
+        elif self.boomerang.direction == Direction.WEST:
+            self.boomerang.center_x -= BOOMERANG_SPEED
 
-        # =========================
-        # Gestion du boomerang : phase de retour
-        # =========================
-        if self.boomerang.state == BoomerangState.RETURNING:
+    def _start_boomerang_return(self) -> None:
+        # Passe le boomerang en mode retour.
+        self.boomerang.state = BoomerangState.RETURNING
 
-            # Je calcule le vecteur allant du boomerang vers le joueur.
-            dx = self.player.center_x - self.boomerang.center_x
-            dy = self.player.center_y - self.boomerang.center_y
-            distance = math.sqrt(dx ** 2 + dy ** 2)
+    def _boomerang_hits_wall(self) -> bool:
+        # Renvoie True si le boomerang touche un mur.
+        return self._has_collision(self.boomerang, self.walls)
 
-            # Si le boomerang est suffisamment proche du joueur,
-            # je considère qu'il est revenu.
-            if distance <= 8:
-                self.boomerang.state = BoomerangState.INACTIVE
-                self.boomerang.distance_travelled = 0
-                self.boomerang.position = self.player.position
+    def _boomerang_hits_enemy(self) -> bool:
+        # Le boomerang peut tuer les bats et les spinners.
+        killed_bat = self._weapon_hits_bats(self.boomerang)
+        killed_spinner = self._weapon_hits_spinners(self.boomerang)
 
-            else:
-                # Sinon je le fais avancer vers le joueur.
-                # Comme je recalcule ça à chaque frame, si le joueur bouge,
-                # le boomerang peut suivre une trajectoire courbe.
-                self.boomerang.center_x += 8 * dx / distance
-                self.boomerang.center_y += 8 * dy / distance
+        return killed_bat or killed_spinner
 
-            # Pendant le retour, le boomerang traverse les murs,
-            # mais il continue de tuer les monstres qu'il touche.
-            colliding_bats_with_boomerang = arcade.check_for_collision_with_list(
-                self.boomerang, self.bat_sprites
-            )
-            colliding_spinners_with_boomerang = arcade.check_for_collision_with_list(
-                self.boomerang, self.spinner_sprites
-            )
-            if len(colliding_bats_with_boomerang) > 0:
-                for bat_sprite in colliding_bats_with_boomerang:
-                    self._remove_bat_sprite(bat_sprite)
-            if len(colliding_spinners_with_boomerang) > 0:
-                for spinner_sprite in colliding_spinners_with_boomerang:
-                    self._remove_spinner_sprite(spinner_sprite)
+    def _update_boomerang_returning(self) -> None:
+        # Pendant le retour, le boomerang se dirige vers la position actuelle du joueur.
+        dx = self.player.center_x - self.boomerang.center_x
+        dy = self.player.center_y - self.boomerang.center_y
 
-        # =========================
-        # Gestion de l'épée :
-        # =========================
-        if self.sword.state == SwordState.ACTIVE :
-            # l'épée est centrée sur le joueur :
-            self.sword.position = self.player.position
-            #je fais avancer son aniumation :
-            self.sword.update_animation()
-            #je mets à jour le ctemps écoulé deouis le début de l'attaque :
-            self.sword.time+=delta_time
-            # si le temps écoulé dépasse : 6 x 50ms = 300 ms -> 0.3, l'attaque est achevée :
-            if self.sword.time >= 0.3 :
-                self.sword.state= SwordState.INACTIVE
-                self.sword.time=0
+        distance = math.sqrt(dx**2 + dy**2)
 
-            # gestion des collisions : épée et spinners :
-            colliding_spinners_with_sword = arcade.check_for_collision_with_list(
-                self.sword, self.spinner_sprites
-            )
-            for spinner_sprite in colliding_spinners_with_sword :
-                self._remove_spinner_sprite(spinner_sprite)
+        # S'il est assez proche du joueur, on considère qu'il est attrapé.
+        if distance <= BOOMERANG_CATCH_DISTANCE:
+            self._catch_boomerang()
+            return
 
-            # gestion des collisions : épée et chauve-souris :
-            colliding_bats_with_sword = arcade.check_for_collision_with_list(
-                self.sword, self.bat_sprites
-            )
-            for bat_sprite in colliding_bats_with_sword:
-                self._remove_bat_sprite(bat_sprite)
+        # dx / distance et dy / distance donnent une direction de longueur 1.
+        # On multiplie par BOOMERANG_SPEED pour garder une vitesse constante.
+        self.boomerang.center_x += BOOMERANG_SPEED * dx / distance
+        self.boomerang.center_y += BOOMERANG_SPEED * dy / distance
 
-            # gestion des collisions : épée et cristaux :
-            colliding_crystals_with_sword = arcade.check_for_collision_with_list(
-                self.sword, self.crystals
-            )
-            for crystal in colliding_crystals_with_sword :
-                crystal.remove_from_sprite_lists()
-                arcade.play_sound(SOUND_COIN)
-                self.score+=1
+        # Même pendant le retour, le boomerang peut tuer des ennemis.
+        self._boomerang_hits_enemy()
 
+    def _catch_boomerang(self) -> None:
+        # Le boomerang redevient disponible.
+        self.boomerang.state = BoomerangState.INACTIVE
+        self.boomerang.distance_travelled = 0
+        self.boomerang.position = self.player.position
 
-        # =========================
-        # Collision joueur / cristaux
-        # =========================
-        # Si le joueur touche un cristal :
-        # - il disparaît
-        # - le son se joue
-        # - le score augmente
-        colliding_crystals = arcade.check_for_collision_with_list(self.player, self.crystals)
-        for crystal in colliding_crystals:
+    # ==================================================
+    # Épée
+    # ==================================================
+
+    def _update_sword(self, delta_time: float) -> None:
+        # Si l'épée n'est pas active, il n'y a rien à faire.
+        if self.sword.state != SwordState.ACTIVE:
+            return
+
+        # Pendant l'attaque, l'épée reste centrée sur le joueur.
+        self.sword.position = self.player.position
+
+        # On fait avancer son animation.
+        self.sword.update_animation()
+
+        # On augmente le temps écoulé depuis le début de l'attaque.
+        self.sword.time += delta_time
+
+        # Après 0.3 seconde, l'attaque se termine.
+        if self.sword.time >= SWORD_ATTACK_DURATION:
+            self._stop_sword_attack()
+
+        # L'épée peut tuer les ennemis et collecter les cristaux.
+        self._sword_hits_enemies()
+        self._sword_hits_crystals()
+
+    def _stop_sword_attack(self) -> None:
+        # L'épée redevient inactive.
+        self.sword.state = SwordState.INACTIVE
+        self.sword.time = 0
+
+    def _sword_hits_enemies(self) -> None:
+        # L'épée tue les spinners et les bats touchés.
+        self._weapon_hits_spinners(self.sword)
+        self._weapon_hits_bats(self.sword)
+
+    def _sword_hits_crystals(self) -> None:
+        # L'épée peut aussi collecter les cristaux touchés.
+        crystals = self._collisions(self.sword, self.crystals)
+        self._collect_crystals(crystals)
+
+    # ==================================================
+    # Collisions avec armes
+    # ==================================================
+
+    def _weapon_hits_spinners(self, weapon: arcade.Sprite) -> bool:
+        # Supprime tous les spinners touchés par une arme.
+        colliding_spinners = self._collisions(weapon, self.spinner_sprites)
+
+        for spinner_sprite in colliding_spinners:
+            self._remove_spinner_sprite(spinner_sprite)
+
+        return len(colliding_spinners) > 0
+
+    def _weapon_hits_bats(self, weapon: arcade.Sprite) -> bool:
+        # Supprime toutes les bats touchées par une arme.
+        colliding_bats = self._collisions(weapon, self.bat_sprites)
+
+        for bat_sprite in colliding_bats:
+            self._remove_bat_sprite(bat_sprite)
+
+        return len(colliding_bats) > 0
+
+    def _remove_spinner_sprite(self, spinner_sprite: arcade.Sprite) -> None:
+        # On doit supprimer le spinner dans deux listes :
+        # - spinner_sprites : affichage
+        # - spinners : logique
+        self._remove_sprite_and_matching_logic(
+            target_sprite=spinner_sprite,
+            sprites=self.spinner_sprites,
+            logic_objects=self.spinners,
+        )
+
+    def _remove_bat_sprite(self, bat_sprite: arcade.Sprite) -> None:
+        # Même principe pour les bats.
+        self._remove_sprite_and_matching_logic(
+            target_sprite=bat_sprite,
+            sprites=self.bat_sprites,
+            logic_objects=self.bats,
+        )
+
+    def _remove_sprite_and_matching_logic(
+        self,
+        target_sprite: arcade.Sprite,
+        sprites: arcade.SpriteList,
+        logic_objects: list,
+    ) -> None:
+        # Les listes logique et visuelle sont parallèles.
+        # Cela veut dire :
+        # sprites[0] correspond à logic_objects[0]
+        # sprites[1] correspond à logic_objects[1]
+        # etc.
+        #
+        # Donc quand on supprime un sprite, on supprime l'objet logique au même indice.
+        for i, sprite in enumerate(sprites):
+            if sprite == target_sprite:
+                sprites.pop(i)
+                logic_objects.pop(i)
+                return
+
+    # ==================================================
+    # Collisions du joueur
+    # ==================================================
+
+    def _handle_player_collisions(self) -> None:
+        # Cette méthode regroupe toutes les collisions importantes du joueur.
+        self._handle_player_collect_crystals()
+        self._handle_player_death_collisions()
+
+    def _handle_player_collect_crystals(self) -> None:
+        # Si le joueur touche un cristal, il le collecte.
+        crystals = self._collisions(self.player, self.crystals)
+        self._collect_crystals(crystals)
+
+    def _collect_crystals(
+        self,
+        crystals: list[arcade.TextureAnimationSprite],
+    ) -> None:
+        # Pour chaque cristal collecté :
+        # - on le retire de l'écran
+        # - on joue un son
+        # - on augmente le score
+        for crystal in crystals:
             crystal.remove_from_sprite_lists()
             arcade.play_sound(SOUND_COIN)
             self.score += 1
 
-        # =========================
-        # Collision joueur / spinners
-        # =========================
-        # Si le joueur touche un spinner, on reset la partie.
-        colliding_spinners = arcade.check_for_collision_with_list(self.player, self.spinner_sprites)
-        if len(colliding_spinners) > 0:
-            new_view = GameView(self.map)
-            self.window.show_view(new_view)
+    def _handle_player_death_collisions(self) -> None:
+        # Si le joueur touche un danger, on recommence la partie.
+        if self._player_touches_enemy():
+            self._restart_game()
             return
-        # =========================
-        # Collision joueur / bats
-        # =========================
-        # Si le joueur touche une chauve-souris, on reset la partie.
-        colliding_bats = arcade.check_for_collision_with_list(
-            self.player, self.bat_sprites
+
+        if self._player_touches_hole():
+            self._restart_game()
+            return
+
+    def _player_touches_enemy(self) -> bool:
+        # Le joueur meurt s'il touche un spinner ou une bat.
+        return (
+            self._has_collision(self.player, self.spinner_sprites)
+            or self._has_collision(self.player, self.bat_sprites)
         )
-        if len(colliding_bats)>0 :
-            new_view= GameView(self.map)
-            self.window.show_view(new_view)
-            return
 
-        # La caméra suit le joueur
-        self.camera.position = self.player.position
+    def _player_touches_hole(self) -> bool:
+        # On vérifie d'abord les trous proches avec Arcade.
+        nearby_holes = self._collisions(self.player, self.holes)
 
-        # =========================
-        # Collision joueur / trous
-        # =========================
-        # Si le joueur est trop proche d'un trou, on reset aussi la partie.
-        nearby_holes = arcade.check_for_collision_with_list(self.player, self.holes)
+        # Puis on utilise une distance plus précise.
         for hole in nearby_holes:
-            if math.dist(self.player.position, hole.position) <= 16:
-                new_view = GameView(self.map)
-                self.window.show_view(new_view)
-                return
+            if math.dist(self.player.position, hole.position) <= HOLE_DEATH_DISTANCE:
+                return True
+
+        return False
+
+    # ==================================================
+    # Petites fonctions générales de collision
+    # ==================================================
+
+    def _collisions(
+        self,
+        sprite: arcade.Sprite,
+        sprite_list: arcade.SpriteList,
+    ) -> list[arcade.Sprite]:
+        # Fonction générale :
+        # renvoie la liste des sprites touchés par sprite.
+        return arcade.check_for_collision_with_list(sprite, sprite_list)
+
+    def _has_collision(
+        self,
+        sprite: arcade.Sprite,
+        sprite_list: arcade.SpriteList,
+    ) -> bool:
+        # Fonction générale :
+        # renvoie True si sprite touche au moins un élément de sprite_list.
+        return len(self._collisions(sprite, sprite_list)) > 0
+
+    # ==================================================
+    # Reset du jeu
+    # ==================================================
+
+    def _restart_game(self) -> None:
+        # Pour recommencer la partie, on recrée une nouvelle GameView avec la même map.
+        new_view = GameView(self.map)
+        self.window.show_view(new_view)
