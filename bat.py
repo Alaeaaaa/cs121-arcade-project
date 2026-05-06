@@ -1,97 +1,111 @@
 from dataclasses import dataclass
 import math
 import random
-from map import Map, GridCell
+
 from constants import TILE_SIZE
-""" Pour représenter la chauve-souris, j'ai choisi de garder un code
-    similaire à celui des spinners pour rester familiarisés avec le code
-    utilisé. """
-# Je détermine d'abord les constantes :
-# vitesse :
+from map import GridCell, Map
+
+
+# Constantes propres aux chauves-souris.
 BAT_SPEED = 2.0
-# dimensions de rectangle d'action :
 BAT_WIDTH = 6
 BAT_HEIGHT = 4
-# nombre de frames pour changer de direction :
 BAT_DIRECTION_CHANGE = 20
-# pour représenter les limites du rectangle d'action :
-@dataclass
-class BatBounds :
-    min_x: float
-    min_y: float
-    max_x: float
-    max_y: float
 
 
 @dataclass
-class Bat :
-    # position de départ (grille) :
-    start_x : int
-    start_y : int
-    # direction actuelle (en rad) :
-    angle : float
-    # vitesse constante :
-    speed : float
-    # limites du rectangle d'action :
-    bounds : BatBounds
-    # nombre de frames avant changement de direction :
-    frames_direction_change : int
+class BatBounds:
+    # Limites du rectangle de mouvement, en pixels.
+    min_x: int
+    max_x: int
+    min_y: int
+    max_y: int
 
-# pour trouver les chauve-souris dans la map :
-def find_bats(game_map : Map):
-    #ici je vais stocker les positions de tous les bats trouvés :
-    bats=[]
-    # je parcours toute la map case par case
-    for x in range(game_map.width):
-        for y in range(game_map.height):
 
-            # je regarde ce qu'il y a dans la case actuelle
-            cell = game_map.get(x, y)
+@dataclass
+class Bat:
+    # Position, vitesse et limites de mouvement d'une chauve-souris.
+    x: float
+    y: float
+    dx: float
+    dy: float
+    bounds: BatBounds
 
-            # si c'est une chauve-souris, j'ajoute sa position dans la liste :
-            if cell == GridCell.BAT :
-                bats.append((x, y))
-    # je renvoie la liste des positions ainsi trouvées :
-    return bats
-# à présent, je dois déterminer le rectangle d'action de la chauve-souris :
-# et ce à partir de sa position de départ :
-def compute_bat_bounds(game_map : Map, x: int, y : int):
-    # je dois créer le rectangle, tout en faisant attention à rester dans la map !
-    # aussi, la zone est delimitée dans l'aire du rectangle qui est calculée comme
-    # vu en ajoutant/retirant la moitié de la largeur/hauteur car on considère x et y
-    # comme le milieu.
-    min_x = max(0,x-BAT_WIDTH//2)
-    min_y = max(0,y-BAT_HEIGHT//2)
-    max_x = min(game_map.width-1, x+BAT_WIDTH//2)
-    max_y = min(game_map.height-1, y + BAT_HEIGHT//2)
-    return BatBounds (
-        min_x=min_x,
-        min_y=min_y,
-        max_x=max_x,
-        max_y=max_y,
+
+def grid_to_pixels(i: int) -> int:
+    # Convertit une coordonnée de grille vers le centre de la case en pixels.
+    return i * TILE_SIZE + TILE_SIZE // 2
+
+
+def clamp(value: int, min_value: int, max_value: int) -> int:
+    # Force une valeur à rester dans l'intervalle [min_value, max_value].
+    return max(min_value, min(value, max_value))
+
+
+def find_cells(game_map: Map, target: GridCell) -> list[tuple[int, int]]:
+    # Fonction générale : trouve toutes les cases d'un certain type dans la map.
+    return [
+        (x, y)
+        for y in range(game_map.height)
+        for x in range(game_map.width)
+        if game_map.get(x, y) == target
+    ]
+
+
+def find_bats(game_map: Map) -> list[tuple[int, int]]:
+    # Cas particulier de find_cells : on cherche seulement les cases BAT.
+    return find_cells(game_map, GridCell.BAT)
+
+
+def compute_bounds(
+    game_map: Map,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+) -> BatBounds:
+    # Calcule un rectangle autour de (x, y), sans dépasser les bords de la map.
+    min_grid_x = clamp(x - width // 2, 0, game_map.width - 1)
+    max_grid_x = clamp(x + width // 2, 0, game_map.width - 1)
+
+    min_grid_y = clamp(y - height // 2, 0, game_map.height - 1)
+    max_grid_y = clamp(y + height // 2, 0, game_map.height - 1)
+
+    return BatBounds(
+        min_x=grid_to_pixels(min_grid_x),
+        max_x=grid_to_pixels(max_grid_x),
+        min_y=grid_to_pixels(min_grid_y),
+        max_y=grid_to_pixels(max_grid_y),
     )
-# à présent, je dois créer les chauve-souris qui sont présents sur la map :
-def create_bats (game_map : Map, val : random.Random):
-    # je crée la liste qui contiendra toutes les chauve-souris :
-    bats = []
-    # je récupère ensuite la liste de toutes les positions :
-    positions = find_bats(game_map)
-    # je parcours ensuite la liste des tuple de coordonnées pour créer les bats :
-    for x,y in positions :
-        # je calcule les limites du rectangle d'action :
-        bounds = compute_bat_bounds(game_map, x, y)
-        bat = Bat (
-            # la position de départ est celle trouvée :
-            start_x=x,
-            start_y = y,
-            # l'angle (direction) est aléatoire comme demandé, variant entre 0 et 2pi :
-            angle = val.uniform(0,2*math.pi),
-            # la vitesse est constante :
-            speed = BAT_SPEED,
-            # les limites ont été calculées plus haut :
-            bounds= bounds,
-            # le nombre de frames pour changer de riection :
-            frames_direction_change=BAT_DIRECTION_CHANGE,
-        )
-        bats.append(bat)
-    return bats
+
+
+def compute_bat_bounds(game_map: Map, x: int, y: int) -> BatBounds:
+    # Cas particulier de compute_bounds avec les dimensions propres aux bats.
+    return compute_bounds(game_map, x, y, BAT_WIDTH, BAT_HEIGHT)
+
+
+def random_velocity(speed: float) -> tuple[float, float]:
+    # Crée une vitesse de norme speed dans une direction aléatoire.
+    angle = random.random() * 2 * math.pi
+    return math.cos(angle) * speed, math.sin(angle) * speed
+
+
+def create_bat(game_map: Map, x: int, y: int) -> Bat:
+    # Crée une Bat complète à partir d'une position en grille.
+    dx, dy = random_velocity(BAT_SPEED)
+
+    return Bat(
+        x=grid_to_pixels(x),
+        y=grid_to_pixels(y),
+        dx=dx,
+        dy=dy,
+        bounds=compute_bat_bounds(game_map, x, y),
+    )
+
+
+def create_bats(game_map: Map, val=None) -> list[Bat]:
+    # val est gardé pour rester compatible avec gameview.py si l'appel existe déjà.
+    return [
+        create_bat(game_map, x, y)
+        for x, y in find_bats(game_map)
+    ]
