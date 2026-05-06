@@ -1,40 +1,44 @@
+from enum import Enum, auto
+
 import arcade
-from enum import Enum
-from textures import *
+
 from direction import Direction
-from constants import SCALE
+from textures import ANIMATION_SWORD
+
 
 class SwordState(Enum):
-    INACTIVE=1
-    ACTIVE=2
+    # L'épée existe dans le jeu, mais elle n'est pas en train d'attaquer.
+    INACTIVE = auto()
+
+    # L'épée est utilisée par le joueur : elle peut toucher les ennemis.
+    ACTIVE = auto()
+
 
 class Sword(arcade.TextureAnimationSprite):
-    """
-    Cette classe représente l'épée du joueur.
 
-    J'ai choisi d'hériter de TextureAnimationSprite parce que :
-    - l'épée doit être affichée dans le jeu
-    - elle a une position (center_x, center_y)
-    - elle possède une animation (animation d'attaque)
-
-    En héritant de cette classe, je peux facilement :
-    - la dessiner
-    - lui donner une animation
-    - gérer ses collisions (avec les crystaux)
-    """
-    def __init__(self, center_x, center_y):
+    def __init__(self):
+        # On crée l'épée comme un sprite animé Arcade.
+        # On met une animation par défaut vers le bas.
         super().__init__(
-            animation = ANIMATION_SWORD[Direction.SOUTH],
-            scale=SCALE,
-            center_x=center_x,
-            center_y=center_y,
+            animation=ANIMATION_SWORD[Direction.SOUTH],
+            scale=1,
         )
-        # l'épée n'est pas utilisée au début, elle est donc inactive
-        self.state=SwordState.INACTIVE
-        # sa direction actuelle est celle du joueur (south par défaut)
-        self.direction=Direction.SOUTH
-        # pour tenir compte du temps d'attaque :
-        self.time= 0.0
-    # J'ai besoin d'une méthode pour choisir la bonne animation selon la direction actuelle :
+
+        # Au début, le joueur n'attaque pas.
+        self.state = SwordState.INACTIVE
+
+        # Direction actuelle de l'épée.
+        # Elle sera mise à jour avec la direction du joueur dans gameview.py.
+        self.direction = Direction.SOUTH
+
+        # Compteur utilisé pour savoir depuis combien de temps l'attaque est active.
+        self.time = 0
+
     def update_direction_animation(self):
-        self.animation=ANIMATION_SWORD[self.direction]
+        # ANIMATION_SWORD est un dictionnaire :
+        # chaque direction correspond à une animation d'attaque.
+        #
+        # Exemple :
+        # si self.direction vaut Direction.NORTH,
+        # alors ANIMATION_SWORD[self.direction] donne l'animation d'attaque vers le haut.
+        self.animation = ANIMATION_SWORD[self.direction]
