@@ -71,6 +71,8 @@ SWITCH_SCALE: Final[float] = 0.25
 
 
 def grid_to_pixels(i: int) -> int:
+    # Convertit une position de grille en position pixel.
+    # Exemple : la case 0 devient le centre de la première case.
     return i * TILE_SIZE + TILE_SIZE // 2
 
 
@@ -144,6 +146,79 @@ class GameView(arcade.View):
 
         self._setup_keyboard()
         self._setup_physics_and_cameras()
+
+    # ==================================================
+    # Extension : système de vies
+    # ==================================================
+
+    def _reset_weapons(self) -> None:
+        # Cette méthode remet les armes dans un état propre.
+        # Elle est appelée après un dégât, quand le joueur est replacé
+        # à sa position de départ.
+
+        # Le boomerang redevient inactif.
+        self.boomerang.state = BoomerangState.INACTIVE
+
+        # On remet la distance parcourue à zéro.
+        self.boomerang.distance_travelled = 0
+
+        # On replace le boomerang sur le joueur.
+        self.boomerang.position = self.player.position
+
+        # L'épée redevient inactive.
+        self.sword.state = SwordState.INACTIVE
+
+        # On remet le timer de l'attaque à zéro.
+        self.sword.time = 0
+
+        # On replace aussi l'épée sur le joueur.
+        self.sword.position = self.player.position
+
+    def _respawn_player(self) -> None:
+        # Cette méthode replace le joueur à sa position de départ
+        # après avoir perdu une vie.
+        #
+        # On ne recommence pas toute la partie ici :
+        # les cristaux collectés restent collectés,
+        # les ennemis tués restent morts,
+        # et le score reste le même.
+
+        # On remet le joueur sur la case de départ de la map.
+        self.player.center_x = grid_to_pixels(self.map.player_start_x)
+        self.player.center_y = grid_to_pixels(self.map.player_start_y)
+
+        # On arrête son mouvement.
+        # Sinon, il pourrait continuer à bouger juste après le respawn.
+        self.player.change_x = 0
+        self.player.change_y = 0
+
+        # On remet les armes dans un état propre.
+        self._reset_weapons()
+
+    def _damage_player(self) -> bool:
+        # Cette méthode centralise toutes les collisions dangereuses.
+        # Au lieu de répéter la logique pour les spinners, bats, trous, slimes,
+        # on appelle toujours _damage_player().
+        #
+        # Elle retourne True si une vie a vraiment été perdue.
+        # Elle retourne False si le joueur était invincible.
+
+        # On demande au joueur de prendre un dégât.
+        took_damage = self.player.take_damage()
+
+        # Si le joueur était invincible, aucun dégât n'est appliqué.
+        if not took_damage:
+            return False
+
+        # Si le joueur n'a plus de vies, on recommence complètement.
+        if self.player.health <= 0:
+            self._restart_game()
+            return True
+
+        # Sinon, il a encore des vies :
+        # on le replace simplement au début.
+        self._respawn_player()
+        return True
 
     # ==================================================
     # Setup général
@@ -397,7 +472,7 @@ class GameView(arcade.View):
         self._update_player_movement()
 
     def on_update(self, delta_time: float) -> None:
-        self._update_player()
+        self._update_player(delta_time)
         self._update_animations()
         self._update_enemies()
         self._update_weapons(delta_time)
@@ -461,6 +536,31 @@ class GameView(arcade.View):
         )
         weapon_text.draw()
 
+        # =========================
+        # Extension : affichage des vies
+        # =========================
+
+        # On affiche un cœur plein pour chaque vie restante.
+        full_hearts = "♥ " * self.player.health
+
+        # On affiche un cœur vide pour chaque vie perdue.
+        empty_hearts = "♡ " * (self.player.max_health - self.player.health)
+
+        # Exemple :
+        # 3 vies -> ♥ ♥ ♥
+        # 2 vies -> ♥ ♥ ♡
+        # 1 vie  -> ♥ ♡ ♡
+        hearts = full_hearts + empty_hearts
+
+        hearts_text = arcade.Text(
+            f"Vies: {hearts}",
+            10,
+            70,
+            arcade.color.RED,
+            22,
+        )
+        hearts_text.draw()
+
     # ==================================================
     # Clavier et armes
     # ==================================================
@@ -518,10 +618,17 @@ class GameView(arcade.View):
     # Update général
     # ==================================================
 
-    def _update_player(self) -> None:
+    def _update_player(self, delta_time: float) -> None:
         self.physics_engine.update()
         self.player.update_direction_animation()
         self.player.update_animation()
+
+        # =========================
+        # Extension : invincibilité
+        # =========================
+        # Après un dégât, le joueur devient invincible pendant un court moment.
+        # Cette méthode diminue le compteur et fait clignoter le joueur.
+        self.player.update_invincibility(delta_time)
 
     def _update_animations(self) -> None:
         for crystal in self.crystals:
@@ -932,12 +1039,15 @@ class GameView(arcade.View):
             self.score += 1
 
     def _handle_player_death_collisions(self) -> None:
+        # Avant l'extension, le joueur recommençait directement la partie.
+        # Maintenant, une collision dangereuse enlève une vie.
+
         if self._player_touches_enemy():
-            self._restart_game()
+            self._damage_player()
             return
 
         if self._player_touches_hole():
-            self._restart_game()
+            self._damage_player()
             return
 
     def _player_touches_enemy(self) -> bool:

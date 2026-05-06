@@ -282,3 +282,27 @@ Par exemple, un portail peut être ouvert si :
 ```yaml
 open_if:
   switch_is_on: first
+
+
+## Extension : système de vies / cœurs
+
+Nous avons ajouté un système de vies pour le joueur.
+
+Avant cette extension, le joueur recommençait directement la partie lorsqu’il touchait un ennemi ou tombait dans un trou. Maintenant, le joueur possède 3 vies. Lorsqu’il touche un danger, il perd seulement une vie et revient à sa position de départ.
+
+Pour éviter que le joueur perde plusieurs vies instantanément en restant en collision avec un ennemi, nous avons ajouté une courte période d’invincibilité après chaque dégât. Pendant cette période, le joueur clignote, ce qui rend l’effet visible pour l’utilisateur.
+
+Nous avons aussi ajouté un affichage des vies dans l’interface sous forme de cœurs. Cela permet au joueur de voir clairement combien de vies il lui reste.
+
+Fichiers modifiés :
+- `constants.py` : ajout des constantes `PLAYER_MAX_HEALTH` et `PLAYER_INVINCIBILITY_DURATION`.
+- `player.py` : ajout des attributs `health`, `max_health`, `invincibility_time`, et des méthodes liées aux dégâts.
+- `gameview.py` : ajout de la logique de perte de vie, de respawn, d’invincibilité et d’affichage des cœurs.
+
+Ce qui fonctionne :
+- Le joueur commence avec 3 vies.
+- Toucher un spinner, une bat, un slime ou un trou enlève une vie.
+- Après un dégât, le joueur revient à sa position de départ.
+- Le joueur devient temporairement invincible après un dégât.
+- Le joueur clignote pendant l’invincibilité.
+- Quand les vies arrivent à 0, la partie recommence complètement.

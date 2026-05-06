@@ -20,3 +20,15 @@ TOP_MARGIN = 150
 
 SPINNER_MOVEMENT_SPEED = 3
 
+# =========================
+# Extension : vies du joueur
+# =========================
+
+# Nombre maximal de vies du joueur.
+# Au début de la partie, le joueur aura ce nombre de cœurs.
+PLAYER_MAX_HEALTH = 3
+
+# Durée d'invincibilité après un dégât, en secondes.
+# Cela évite que le joueur perde plusieurs vies instantanément
+# s'il reste en contact avec un ennemi ou un trou.
+PLAYER_INVINCIBILITY_DURATION = 1.0
