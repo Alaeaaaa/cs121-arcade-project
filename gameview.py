@@ -158,20 +158,18 @@ class GameView(arcade.View):
         # Au début du jeu, l'arme sélectionnée est le boomerang.
         self.active_weapon = ActiveWeapon.BOOMERANG
 
-        # Les deux armes existent dès le début, mais elles ne sont pas forcément
-        # visibles. Leur état décide si on les dessine ou pas.
-        self.boomerang = Boomerang(
-            center_x=self.player.center_x,
-            center_y=self.player.center_y,
-        )
+        # Le boomerang existe dès le début, mais il est inactif.
+        # Sa classe ne prend pas center_x / center_y dans le constructeur,
+        # donc on le crée d'abord, puis on le place sur le joueur.
+        self.boomerang = Boomerang()
+        self.boomerang.position = self.player.position
 
-        self.sword = Sword(
-            center_x=self.player.center_x,
-            center_y=self.player.center_y,
-        )
+        # Même idée pour l'épée.
+        self.sword = Sword()
+        self.sword.position = self.player.position
 
-        # Comme pour le joueur, on met les armes dans des SpriteList pour
-        # pouvoir les dessiner facilement.
+        # Comme pour le joueur, on met les armes dans des SpriteList
+        # pour pouvoir les dessiner facilement.
         self.boomerang_list = arcade.SpriteList()
         self.boomerang_list.append(self.boomerang)
 
@@ -403,6 +401,22 @@ class GameView(arcade.View):
             20,
         )
         score_text.draw()
+
+        # On affiche aussi l'arme actuellement sélectionnée.
+        # Comme ça, quand on appuie sur R, on voit directement le changement.
+        if self.active_weapon == ActiveWeapon.BOOMERANG:
+            weapon_name = "Boomerang"
+        else:
+            weapon_name = "Sword"
+
+        weapon_text = arcade.Text(
+            f"Weapon: {weapon_name}",
+            10,
+            40,
+            arcade.color.WHITE,
+            20,
+        )
+        weapon_text.draw()
 
     # ==================================================
     # Clavier et armes
