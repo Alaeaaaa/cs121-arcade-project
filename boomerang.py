@@ -1,80 +1,43 @@
-import arcade
-from enum import Enum
+from enum import Enum, auto
 
-from constants import *
-from textures import *
+import arcade
+
 from direction import Direction
+from textures import ANIMATION_BOOMERANG
+
+
+# Taille visuelle du boomerang dans le jeu.
+BOOMERANG_SCALE = 2
 
 
 class BoomerangState(Enum):
-    """
-    Le boomerang peut être dans 3 états différents.
+    # Le boomerang n'est pas lancé.
+    INACTIVE = auto()
 
-    INACTIVE :
-        Le boomerang n'est pas utilisé. Il n'est pas visible dans le jeu.
+    # Le boomerang part depuis le joueur.
+    LAUNCHING = auto()
 
-    LAUNCHING :
-        Le joueur vient de lancer le boomerang. Il part en ligne droite
-        dans la direction où regarde le joueur.
-
-    RETURNING :
-        Le boomerang revient vers le joueur après avoir atteint sa distance
-        maximale ou après avoir touché un obstacle ou un monstre.
-    """
-    INACTIVE = 1
-    LAUNCHING = 2
-    RETURNING = 3
+    # Le boomerang revient vers le joueur.
+    RETURNING = auto()
 
 
 class Boomerang(arcade.TextureAnimationSprite):
-    """
-    Cette classe représente le boomerang du joueur.
 
-    J'ai choisi d'hériter de TextureAnimationSprite parce que :
-    - le boomerang doit être affiché dans le jeu
-    - il a une position (center_x, center_y)
-    - il possède une animation (rotation du boomerang)
-
-    En héritant de cette classe, je peux facilement :
-    - le dessiner
-    - lui donner une animation
-    - gérer ses collisions
-    """
-
-    def __init__(self, center_x: float, center_y: float) -> None:
-        """
-        Constructeur du boomerang.
-
-        Quand on crée le boomerang :
-        - on lui donne son animation
-        - sa taille (scale)
-        - sa position initiale
-        """
-
-        # J'appelle le constructeur de TextureAnimationSprite
-        # pour initialiser l'animation et la position.
+    def __init__(self):
+        # Le boomerang est un sprite animé Arcade.
+        # Son animation est chargée dans textures.py.
         super().__init__(
             animation=ANIMATION_BOOMERANG,
-            scale=SCALE,
-            center_x=center_x,
-            center_y=center_y,
+            scale=BOOMERANG_SCALE,
         )
 
-        # =========================
-        # État du boomerang
-        # =========================
-
-        # Au début du jeu, le boomerang est inactif.
-        # Il ne sera donc pas affiché tant que le joueur
-        # n'appuie pas sur la touche D.
+        # Au début, le boomerang n'est pas utilisé.
         self.state = BoomerangState.INACTIVE
 
-        # Direction actuelle du boomerang.
-        # Cette direction sera copiée depuis la direction du joueur
-        # au moment où il lance le boomerang.
+        # Direction dans laquelle le boomerang est lancé.
+        # Elle sera mise à jour avec la direction du joueur dans gameview.py.
         self.direction = Direction.SOUTH
 
-        # Distance parcourue par le boomerang pendant la phase LAUNCHING.
-        # Cette variable nous sert à savoir quand il a parcouru
-        # la distance maximale (8 cases).
+        # Distance déjà parcourue pendant la phase LAUNCHING.
+        # Quand cette distance devient assez grande, le boomerang commence à revenir.
         self.distance_travelled = 0
