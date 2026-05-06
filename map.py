@@ -135,6 +135,9 @@ def map_from_string(text: str) -> Map:
                 row.append(GridCell.SPINNER_VERTICAL)
             elif char == "v":
                 row.append(GridCell.BAT)
+            # m = slime / blob
+            elif char == "m":
+                row.append(GridCell.SLIME)
 
             elif char == "P":
                 if player_x is not None:
