@@ -2,7 +2,7 @@ import sys
 import arcade
 
 from constants import *
-from gameview import GameView
+from game_view import GameView
 from map import map_from_file, InvalidMapFileException
 
 

@@ -1,0 +1,133 @@
+from __future__ import annotations
+
+import math
+from typing import TYPE_CHECKING, Callable
+
+import arcade
+
+from constants import HOLE_DEATH_DISTANCE
+from textures import SOUND_COIN
+
+if TYPE_CHECKING:
+    from player import Player
+    from enemy_system import EnemySystem
+    from switch import Switch, Gate
+    from weapon_system import WeaponSystem
+    from textures import TEXTURE_SWITCH_ON, TEXTURE_SWITCH_OFF
+
+
+class CollisionHandler:
+    """
+    Centralise toutes les collisions :
+    - joueur vs cristaux, boucliers, ennemis, trous
+    - armes vs ennemis, switches, cristaux
+    """
+
+    def __init__(
+        self,
+        player: Player,
+        weapon_system: WeaponSystem,
+        spinners: EnemySystem,
+        bats: EnemySystem,
+        slimes: EnemySystem,
+        crystals: arcade.SpriteList,
+        shields: arcade.SpriteList,
+        holes: arcade.SpriteList,
+        switches: list[Switch],
+        switch_sprites: arcade.SpriteList,
+        gates: list[Gate],
+        gate_sprites: arcade.SpriteList,
+        walls: arcade.SpriteList,
+        on_damage: Callable[[], None],
+        on_score: Callable[[], None],
+        on_gate_sync: Callable[[Switch, arcade.Sprite], None],
+    ) -> None:
+        self.player = player
+        self.weapons = weapon_system
+        self.spinners = spinners
+        self.bats = bats
+        self.slimes = slimes
+        self.crystals = crystals
+        self.shields = shields
+        self.holes = holes
+        self.switches = switches
+        self.switch_sprites = switch_sprites
+        self.gates = gates
+        self.gate_sprites = gate_sprites
+        self.walls = walls
+        self.on_damage = on_damage
+        self.on_score = on_score
+        self.on_gate_sync = on_gate_sync
+
+    # --------------------------------------------------
+    # Collisions joueur (appelé chaque frame)
+    # --------------------------------------------------
+
+    def handle_player(self) -> None:
+        self._collect_crystals(
+            arcade.check_for_collision_with_list(self.player, self.crystals)
+        )
+        self._collect_shields(
+            arcade.check_for_collision_with_list(self.player, self.shields)
+        )
+        self._handle_death_collisions()
+
+    def _collect_crystals(self, hit: list[arcade.Sprite]) -> None:
+        for crystal in hit:
+            crystal.remove_from_sprite_lists()
+            arcade.play_sound(SOUND_COIN)
+            self.on_score()
+
+    def _collect_shields(self, hit: list[arcade.Sprite]) -> None:
+        for shield in hit:
+            shield.remove_from_sprite_lists()
+            self.player.activate_shield()
+            arcade.play_sound(SOUND_COIN)
+
+    def _handle_death_collisions(self) -> None:
+        if self._player_touches_enemy() or self._player_touches_hole():
+            self.on_damage()
+
+    def _player_touches_enemy(self) -> bool:
+        return (
+            bool(arcade.check_for_collision_with_list(self.player, self.spinners.sprites))
+            or bool(arcade.check_for_collision_with_list(self.player, self.bats.sprites))
+            or bool(arcade.check_for_collision_with_list(self.player, self.slimes.sprites))
+        )
+
+    def _player_touches_hole(self) -> bool:
+        nearby = arcade.check_for_collision_with_list(self.player, self.holes)
+        return any(
+            math.dist(self.player.position, hole.position) <= HOLE_DEATH_DISTANCE
+            for hole in nearby
+        )
+
+    # --------------------------------------------------
+    # Collisions armes (callbacks passés à WeaponSystem)
+    # --------------------------------------------------
+
+    def weapon_hits_enemies(self, weapon: arcade.Sprite) -> bool:
+        hit_bat = self.bats.weapon_hits(weapon)
+        hit_spinner = self.spinners.weapon_hits(weapon)
+        hit_slime = self.slimes.weapon_hits(weapon)
+        return hit_bat or hit_spinner or hit_slime
+
+    def weapon_hits_crystals(self, weapon: arcade.Sprite) -> None:
+        hit = arcade.check_for_collision_with_list(weapon, self.crystals)
+        self._collect_crystals(hit)
+
+    def weapon_hits_switches(self, weapon: arcade.Sprite) -> bool:
+        touched = False
+
+        for switch, switch_sprite in zip(self.switches, self.switch_sprites):
+            is_touching = arcade.check_for_collision(weapon, switch_sprite)
+
+            if is_touching and not switch.is_being_hit:
+                switch.is_being_hit = True
+                touched = True
+                self.on_gate_sync(switch, switch_sprite)
+
+            elif not is_touching:
+                switch.is_being_hit = False
+
+        return touched
