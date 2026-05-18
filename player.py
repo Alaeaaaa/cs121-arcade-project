@@ -5,6 +5,7 @@ from constants import (
     PLAYER_MOVEMENT_SPEED,
     PLAYER_MAX_HEALTH,
     PLAYER_INVINCIBILITY_DURATION,
+    SHIELD_DURATION,
 )
 from direction import Direction
 
@@ -42,6 +43,14 @@ class Player(arcade.TextureAnimationSprite):
         # Temps restant pendant lequel le joueur est invincible.
         # Au début, il n'est pas invincible, donc la valeur est 0.
         self.invincibility_time = 0.0
+
+                # =========================
+        # Extension : bouclier
+        # =========================
+
+        # Temps restant pendant lequel le bouclier est actif.
+        # S'il vaut 0, le joueur n'a pas de bouclier.
+        self.shield_time = 0.0
 
     def update_movement(self, right, left, up, down):
 
@@ -127,13 +136,28 @@ class Player(arcade.TextureAnimationSprite):
 
         # Le joueur est invincible tant que ce compteur est positif.
         return self.invincibility_time > 0
+    
+    def has_active_shield(self) -> bool:
+        # Le bouclier est actif tant que ce compteur est positif.
+        return self.shield_time > 0
+
+    def activate_shield(self) -> None:
+        # Quand le joueur ramasse un bouclier,
+        # il est protégé pendant SHIELD_DURATION secondes.
+        self.shield_time = SHIELD_DURATION
 
     def take_damage(self, amount: int = 1) -> bool:
 
         # Si le joueur est invincible, on ignore le dégât.
-        # On retourne False pour dire à GameView :
-        # "aucune vie n'a été perdue".
+        # On retourne False car aucune vie n'a été perdue.
         if self.is_invincible():
+            return False
+
+        # Si le bouclier est actif, il absorbe le dégât.
+        # Le joueur ne perd pas de vie.
+        if self.has_active_shield():
+            self.shield_time = 0.0
+            self.invincibility_time = PLAYER_INVINCIBILITY_DURATION
             return False
 
         # On enlève amount vies.
@@ -144,7 +168,7 @@ class Player(arcade.TextureAnimationSprite):
         # Cela évite qu'il perde plusieurs cœurs d'un coup.
         self.invincibility_time = PLAYER_INVINCIBILITY_DURATION
 
-        # On retourne True pour dire que le dégât a bien été appliqué.
+        # On retourne True pour dire qu'une vie a bien été perdue.
         return True
 
     def update_invincibility(self, delta_time: float) -> None:
@@ -175,3 +199,13 @@ class Player(arcade.TextureAnimationSprite):
             # on le rend complètement visible.
             #alpha veut dire opacité / transparence
             self.alpha = 255
+
+    def update_shield(self, delta_time: float) -> None:
+        # Cette méthode est appelée à chaque frame depuis GameView.
+        # Elle diminue le temps restant du bouclier.
+
+        if self.shield_time > 0:
+            self.shield_time = max(
+                0,
+                self.shield_time - delta_time,
+            )

@@ -32,3 +32,13 @@ PLAYER_MAX_HEALTH = 3
 # Cela évite que le joueur perde plusieurs vies instantanément
 # s'il reste en contact avec un ennemi ou un trou.
 PLAYER_INVINCIBILITY_DURATION = 1.0
+
+# =========================
+# Extension : bouclier
+# =========================
+
+# Durée pendant laquelle le bouclier protège le joueur.
+SHIELD_DURATION = 5.0
+
+# Taille visuelle du bonus bouclier dans le monde.
+SHIELD_SCALE = 0.5

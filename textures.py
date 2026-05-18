@@ -103,6 +103,14 @@ TEXTURE_GRASS: Final[arcade.Texture] = _overworld_grid[18 * 1 + 6]
 TEXTURE_BUSH: Final[arcade.Texture] = _overworld_grid[18 * 3 + 5]
 TEXTURE_HOLE: Final[arcade.Texture] = _overworld_grid[18 * 4 + 8]
 
+# ==================================================
+# Texture du bouclier
+# ==================================================
+
+TEXTURE_SHIELD: Final[arcade.Texture] = arcade.load_texture(
+    ":resources:/images/items/coinGold.png"
+)
+
 
 # ==================================================
 # Textures des interrupteurs EPFL

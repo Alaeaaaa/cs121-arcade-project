@@ -11,6 +11,7 @@ from constants import (
     MAX_WINDOW_HEIGHT,
     MAX_WINDOW_WIDTH,
     SCALE,
+    SHIELD_SCALE,
     SPINNER_MOVEMENT_SPEED,
     TILE_SIZE,
 )
@@ -26,6 +27,7 @@ from textures import (
     TEXTURE_GATE_OPEN,
     TEXTURE_GRASS,
     TEXTURE_HOLE,
+    TEXTURE_SHIELD,
     TEXTURE_SWITCH_OFF,
     TEXTURE_SWITCH_ON,
 )
@@ -52,7 +54,7 @@ from switch import (
 )
 
 from boomerang import Boomerang, BoomerangState
-from sword import Sword, SwordState
+from sword import Sword
 
 
 # ==================================================
@@ -91,6 +93,7 @@ class GameView(arcade.View):
     grounds: Final[arcade.SpriteList[arcade.Sprite]]
     walls: Final[arcade.SpriteList[arcade.Sprite]]
     crystals: Final[arcade.SpriteList[arcade.TextureAnimationSprite]]
+    shields: Final[arcade.SpriteList[arcade.Sprite]]
     holes: Final[arcade.SpriteList[arcade.Sprite]]
 
     switches: list[Switch]
@@ -156,20 +159,12 @@ class GameView(arcade.View):
         # Elle est appelée après un dégât, quand le joueur est replacé
         # à sa position de départ.
 
-        # Le boomerang redevient inactif.
-        self.boomerang.state = BoomerangState.INACTIVE
-
-        # On remet la distance parcourue à zéro.
-        self.boomerang.distance_travelled = 0
+        # Maintenant, chaque arme sait elle-même comment se désactiver.
+        self.boomerang.deactivate()
+        self.sword.deactivate()
 
         # On replace le boomerang sur le joueur.
         self.boomerang.position = self.player.position
-
-        # L'épée redevient inactive.
-        self.sword.state = SwordState.INACTIVE
-
-        # On remet le timer de l'attaque à zéro.
-        self.sword.time = 0
 
         # On replace aussi l'épée sur le joueur.
         self.sword.position = self.player.position
@@ -201,12 +196,13 @@ class GameView(arcade.View):
         # on appelle toujours _damage_player().
         #
         # Elle retourne True si une vie a vraiment été perdue.
-        # Elle retourne False si le joueur était invincible.
+        # Elle retourne False si le joueur était invincible ou protégé.
 
         # On demande au joueur de prendre un dégât.
         took_damage = self.player.take_damage()
 
-        # Si le joueur était invincible, aucun dégât n'est appliqué.
+        # Si le joueur était invincible ou protégé par le bouclier,
+        # aucune vie n'est perdue.
         if not took_damage:
             return False
 
@@ -254,6 +250,7 @@ class GameView(arcade.View):
         self.grounds = arcade.SpriteList(use_spatial_hash=True)
         self.walls = arcade.SpriteList(use_spatial_hash=True)
         self.crystals = arcade.SpriteList()
+        self.shields = arcade.SpriteList()
         self.holes = arcade.SpriteList()
 
         for y in range(self.map.height):
@@ -316,7 +313,7 @@ class GameView(arcade.View):
 
         for slime in self.slimes:
             slime_sprite = arcade.TextureAnimationSprite(
-                animation=ANIMATION_BAT,   #error AJOUTER L'ANIMATION
+                animation=ANIMATION_BAT,   # error AJOUTER L'ANIMATION
                 scale=SCALE,
                 center_x=slime.x,
                 center_y=slime.y,
@@ -352,6 +349,18 @@ class GameView(arcade.View):
         return arcade.Sprite(
             texture,
             scale=SCALE,
+            center_x=grid_to_pixels(x),
+            center_y=grid_to_pixels(y),
+        )
+
+    def _create_shield_sprite(
+        self,
+        x: int,
+        y: int,
+    ) -> arcade.Sprite:
+        return arcade.Sprite(
+            TEXTURE_SHIELD,
+            scale=SHIELD_SCALE,
             center_x=grid_to_pixels(x),
             center_y=grid_to_pixels(y),
         )
@@ -411,6 +420,11 @@ class GameView(arcade.View):
         elif cell == GridCell.CRYSTAL:
             self.crystals.append(
                 self._create_animated_sprite(ANIMATION_CRYSTAL, x, y)
+            )
+
+        elif getattr(GridCell, "SHIELD", None) is not None and cell == GridCell.SHIELD:
+            self.shields.append(
+                self._create_shield_sprite(x, y)
             )
 
         elif cell == GridCell.HOLE:
@@ -497,7 +511,7 @@ class GameView(arcade.View):
 
         self.holes.draw()
         self.crystals.draw()
-
+        self.shields.draw()
         self.switch_sprites.draw()
 
         self.spinner_sprites.draw()
@@ -506,10 +520,12 @@ class GameView(arcade.View):
 
         self.player_list.draw()
 
-        if self.boomerang.state != BoomerangState.INACTIVE:
+        # Grâce à Weapon, GameView peut juste demander si l'arme est active.
+        if self.boomerang.is_active():
             self.boomerang_list.draw()
 
-        if self.sword.state == SwordState.ACTIVE:
+        # Même chose pour l'épée.
+        if self.sword.is_active():
             self.sword_list.draw()
 
     def _draw_ui(self) -> None:
@@ -561,6 +577,24 @@ class GameView(arcade.View):
         )
         hearts_text.draw()
 
+        # =========================
+        # Extension : affichage du bouclier
+        # =========================
+
+        if self.player.has_active_shield():
+            shield_text_value = f"Bouclier: {self.player.shield_time:.1f}s"
+        else:
+            shield_text_value = "Bouclier: non"
+
+        shield_text = arcade.Text(
+            shield_text_value,
+            10,
+            100,
+            arcade.color.LIGHT_BLUE,
+            20,
+        )
+        shield_text.draw()
+
     # ==================================================
     # Clavier et armes
     # ==================================================
@@ -589,30 +623,30 @@ class GameView(arcade.View):
             self._start_sword_attack()
 
     def _all_weapons_are_inactive(self) -> bool:
-        return (
-            self.boomerang.state == BoomerangState.INACTIVE
-            and self.sword.state == SwordState.INACTIVE
-        )
+        # On utilise la méthode commune définie dans Weapon.
+        return not self.boomerang.is_active() and not self.sword.is_active()
 
     def _launch_boomerang(self) -> None:
-        if self.boomerang.state != BoomerangState.INACTIVE:
+        if not self._all_weapons_are_inactive():
             return
 
-        self.boomerang.position = self.player.position
-        self.boomerang.direction = self.player.direction
-        self.boomerang.state = BoomerangState.LAUNCHING
-        self.boomerang.distance_travelled = 0
+        # Le boomerang gère lui-même son état, sa direction,
+        # sa position et sa distance parcourue.
+        self.boomerang.launch(
+            self.player.direction,
+            self.player.center_x,
+            self.player.center_y,
+        )
 
     def _start_sword_attack(self) -> None:
         if not self._all_weapons_are_inactive():
             return
 
         self.sword.position = self.player.position
-        self.sword.direction = self.player.direction
-        self.sword.update_direction_animation()
 
-        self.sword.state = SwordState.ACTIVE
-        self.sword.time = 0
+        # L'épée gère elle-même son état, sa direction,
+        # son animation et son timer.
+        self.sword.activate(self.player.direction)
 
     # ==================================================
     # Update général
@@ -629,6 +663,7 @@ class GameView(arcade.View):
         # Après un dégât, le joueur devient invincible pendant un court moment.
         # Cette méthode diminue le compteur et fait clignoter le joueur.
         self.player.update_invincibility(delta_time)
+        self.player.update_shield(delta_time)
 
     def _update_animations(self) -> None:
         for crystal in self.crystals:
@@ -637,10 +672,11 @@ class GameView(arcade.View):
         for spinner_sprite in self.spinner_sprites:
             spinner_sprite.update_animation()
 
-        if self.boomerang.state != BoomerangState.INACTIVE:
+        # Grâce à Weapon, on n'a plus besoin de vérifier directement l'état interne.
+        if self.boomerang.is_active():
             self.boomerang.update_animation()
 
-        if self.sword.state == SwordState.ACTIVE:
+        if self.sword.is_active():
             self.sword.update_animation()
 
     def _update_enemies(self) -> None:
@@ -834,7 +870,8 @@ class GameView(arcade.View):
             self.boomerang.center_x -= BOOMERANG_SPEED
 
     def _start_boomerang_return(self) -> None:
-        self.boomerang.state = BoomerangState.RETURNING
+        # Le boomerang sait lui-même comment passer en mode retour.
+        self.boomerang.return_to_player()
 
     def _boomerang_hits_wall(self) -> bool:
         return self._has_collision(self.boomerang, self.walls)
@@ -863,8 +900,8 @@ class GameView(arcade.View):
         self._boomerang_hits_enemy()
 
     def _catch_boomerang(self) -> None:
-        self.boomerang.state = BoomerangState.INACTIVE
-        self.boomerang.distance_travelled = 0
+        # Le boomerang sait lui-même comment se désactiver.
+        self.boomerang.deactivate()
         self.boomerang.position = self.player.position
 
     # ==================================================
@@ -872,7 +909,7 @@ class GameView(arcade.View):
     # ==================================================
 
     def _update_sword(self, delta_time: float) -> None:
-        if self.sword.state != SwordState.ACTIVE:
+        if not self.sword.is_active():
             return
 
         self.sword.position = self.player.position
@@ -887,8 +924,8 @@ class GameView(arcade.View):
         self._weapon_hits_switches(self.sword)
 
     def _stop_sword_attack(self) -> None:
-        self.sword.state = SwordState.INACTIVE
-        self.sword.time = 0
+        # L'épée sait elle-même comment se désactiver.
+        self.sword.deactivate()
 
         for switch in self.switches:
             switch.is_being_hit = False
@@ -1023,11 +1060,20 @@ class GameView(arcade.View):
 
     def _handle_player_collisions(self) -> None:
         self._handle_player_collect_crystals()
+        self._handle_player_collect_shields()
         self._handle_player_death_collisions()
 
     def _handle_player_collect_crystals(self) -> None:
         crystals = self._collisions(self.player, self.crystals)
         self._collect_crystals(crystals)
+
+    def _handle_player_collect_shields(self) -> None:
+        shields = self._collisions(self.player, self.shields)
+
+        for shield in shields:
+            shield.remove_from_sprite_lists()
+            self.player.activate_shield()
+            arcade.play_sound(SOUND_COIN)
 
     def _collect_crystals(
         self,

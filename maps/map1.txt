@@ -26,17 +26,17 @@ gates:
         - switch_is_on: second
 ---
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-x P      *        x          *         x
+x P  A   *        x          *         x
 x   xxxx     O    x    xxxx       m    x
-x      x          x   |    x           x
+x      x          x   |    x   A       x
 x  *   x   S      x        x   *       x
 x      x          xxxxxxxxxx      s    x
 x     ^       |        *               x
 x   xxxx          xxxx       O         x
-x        *             x               x
+x        *             x      A        x
 x   m          S       x      xxxx     x
 x        xxxx          |   ^      *    x
-x   *       O          x             m x
+x   *       O  A       x             m x
 x       v        *     x      v        x
 x          s           x          *    x
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

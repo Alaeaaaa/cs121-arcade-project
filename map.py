@@ -15,6 +15,7 @@ class GridCell(Enum):
     GRASS = auto()
     BUSH = auto()
     CRYSTAL = auto()
+    SHIELD = auto()
     SPINNER_HORIZONTAL = auto()
     SPINNER_VERTICAL = auto()
     HOLE = auto()
@@ -49,7 +50,6 @@ class SwitchIsOn(GateCondition):
         if self.switch_id not in switch_states:
             raise InvalidMapFileException(
                 f"Switch inconnu dans une condition : {self.switch_id}"
-                #La map est invalide, car elle parle d’un switch qui n’existe pas.
             )
 
         return switch_states[self.switch_id]
@@ -307,6 +307,9 @@ def cell_from_char(char: str, x: int, y: int) -> GridCell:
     if char == "*":
         return GridCell.CRYSTAL
 
+    if char == "A":
+        return GridCell.SHIELD
+
     if char == "O":
         return GridCell.HOLE
 
@@ -359,7 +362,7 @@ def validate_switches_and_gates(
     for gate_config in gate_configs:
         if cells[gate_config.y][gate_config.x] != GridCell.GATE:
             raise InvalidMapFileException(
-                f"Il doit y avoir un | à la position d'un gate"
+                "Il doit y avoir un | à la position d'un gate"
             )
 
 
