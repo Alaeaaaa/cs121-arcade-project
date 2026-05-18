@@ -1,5 +1,4 @@
 import arcade
-from textures import *
 
 from constants import (
     PLAYER_MOVEMENT_SPEED,
@@ -7,7 +6,13 @@ from constants import (
     PLAYER_INVINCIBILITY_DURATION,
     SHIELD_DURATION,
 )
+
 from direction import Direction
+
+from textures import (
+    PLAYER_IDLE_ANIMATIONS,
+    PLAYER_RUN_ANIMATIONS,
+)
 
 
 class Player(arcade.TextureAnimationSprite):
@@ -44,7 +49,7 @@ class Player(arcade.TextureAnimationSprite):
         # Au début, il n'est pas invincible, donc la valeur est 0.
         self.invincibility_time = 0.0
 
-                # =========================
+        # =========================
         # Extension : bouclier
         # =========================
 
@@ -104,44 +109,26 @@ class Player(arcade.TextureAnimationSprite):
         # Le joueur bouge si au moins une de ses vitesses est non nulle.
         is_moving = self.change_x != 0 or self.change_y != 0
 
-        # On choisit l'animation selon la direction.
-        # Pour chaque direction, il y a une animation idle
-        # et une animation de course.
-        #à refactoriser 
-        if self.direction == Direction.SOUTH:
-            if is_moving:
-                self.animation = ANIMATION_PLAYER_RUN_DOWN
-            else:
-                self.animation = ANIMATION_PLAYER_IDLE_DOWN
-
-        elif self.direction == Direction.NORTH:
-            if is_moving:
-                self.animation = ANIMATION_PLAYER_RUN_UP
-            else:
-                self.animation = ANIMATION_PLAYER_IDLE_UP
-
-        elif self.direction == Direction.WEST:
-            if is_moving:
-                self.animation = ANIMATION_PLAYER_RUN_LEFT
-            else:
-                self.animation = ANIMATION_PLAYER_IDLE_LEFT
-
-        elif self.direction == Direction.EAST:
-            if is_moving:
-                self.animation = ANIMATION_PLAYER_RUN_RIGHT
-            else:
-                self.animation = ANIMATION_PLAYER_IDLE_RIGHT
+        # Refactoring :
+        # au lieu d'avoir un grand if/elif pour chaque direction,
+        # on utilise les dictionnaires d'animations définis dans textures.py.
+        if is_moving:
+            self.animation = PLAYER_RUN_ANIMATIONS[self.direction]
+        else:
+            self.animation = PLAYER_IDLE_ANIMATIONS[self.direction]
 
     def is_invincible(self) -> bool:
 
         # Le joueur est invincible tant que ce compteur est positif.
         return self.invincibility_time > 0
-    
+
     def has_active_shield(self) -> bool:
+
         # Le bouclier est actif tant que ce compteur est positif.
         return self.shield_time > 0
 
     def activate_shield(self) -> None:
+
         # Quand le joueur ramasse un bouclier,
         # il est protégé pendant SHIELD_DURATION secondes.
         self.shield_time = SHIELD_DURATION
@@ -197,10 +184,11 @@ class Player(arcade.TextureAnimationSprite):
         else:
             # Si le joueur n'est plus invincible,
             # on le rend complètement visible.
-            #alpha veut dire opacité / transparence
+            # alpha veut dire opacité / transparence.
             self.alpha = 255
 
     def update_shield(self, delta_time: float) -> None:
+
         # Cette méthode est appelée à chaque frame depuis GameView.
         # Elle diminue le temps restant du bouclier.
 

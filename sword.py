@@ -20,7 +20,7 @@ class Sword(Weapon):
         # On met une animation par défaut vers le bas.
         super().__init__(
             animation=ANIMATION_SWORD[Direction.SOUTH],
-            scale=1,
+            scale=2,
         )
 
         # Au début, le joueur n'attaque pas.

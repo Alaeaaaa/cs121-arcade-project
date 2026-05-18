@@ -8,11 +8,17 @@ import random
 import arcade
 
 from constants import (
+    BOOMERANG_CATCH_DISTANCE,
+    BOOMERANG_MAX_DISTANCE_IN_TILES,
+    BOOMERANG_SPEED,
+    HOLE_DEATH_DISTANCE,
     MAX_WINDOW_HEIGHT,
     MAX_WINDOW_WIDTH,
     SCALE,
     SHIELD_SCALE,
     SPINNER_MOVEMENT_SPEED,
+    SWORD_ATTACK_DURATION,
+    SWITCH_SCALE,
     TILE_SIZE,
 )
 
@@ -55,27 +61,16 @@ from switch import (
 
 from boomerang import Boomerang, BoomerangState
 from sword import Sword
+from utils import grid_to_pixels
 
 
 # ==================================================
 # Constantes propres à GameView
 # ==================================================
 
-BOOMERANG_SPEED: Final[int] = 8
-BOOMERANG_MAX_DISTANCE: Final[int] = 8 * TILE_SIZE
-BOOMERANG_CATCH_DISTANCE: Final[int] = 8
-
-SWORD_ATTACK_DURATION: Final[float] = 0.3
-
-HOLE_DEATH_DISTANCE: Final[int] = 16
-
-SWITCH_SCALE: Final[float] = 0.25
-
-
-def grid_to_pixels(i: int) -> int:
-    # Convertit une position de grille en position pixel.
-    # Exemple : la case 0 devient le centre de la première case.
-    return i * TILE_SIZE + TILE_SIZE // 2
+BOOMERANG_MAX_DISTANCE: Final[int] = (
+    BOOMERANG_MAX_DISTANCE_IN_TILES * TILE_SIZE
+)
 
 
 class ActiveWeapon(Enum):
@@ -198,21 +193,15 @@ class GameView(arcade.View):
         # Elle retourne True si une vie a vraiment été perdue.
         # Elle retourne False si le joueur était invincible ou protégé.
 
-        # On demande au joueur de prendre un dégât.
         took_damage = self.player.take_damage()
 
-        # Si le joueur était invincible ou protégé par le bouclier,
-        # aucune vie n'est perdue.
         if not took_damage:
             return False
 
-        # Si le joueur n'a plus de vies, on recommence complètement.
         if self.player.health <= 0:
             self._restart_game()
             return True
 
-        # Sinon, il a encore des vies :
-        # on le replace simplement au début.
         self._respawn_player()
         return True
 
@@ -422,7 +411,7 @@ class GameView(arcade.View):
                 self._create_animated_sprite(ANIMATION_CRYSTAL, x, y)
             )
 
-        elif getattr(GridCell, "SHIELD", None) is not None and cell == GridCell.SHIELD:
+        elif cell == GridCell.SHIELD:
             self.shields.append(
                 self._create_shield_sprite(x, y)
             )
@@ -529,6 +518,12 @@ class GameView(arcade.View):
             self.sword_list.draw()
 
     def _draw_ui(self) -> None:
+        self._draw_score_ui()
+        self._draw_weapon_ui()
+        self._draw_health_ui()
+        self._draw_shield_ui()
+
+    def _draw_score_ui(self) -> None:
         score_text = arcade.Text(
             f"Score: {self.score}",
             10,
@@ -538,6 +533,7 @@ class GameView(arcade.View):
         )
         score_text.draw()
 
+    def _draw_weapon_ui(self) -> None:
         if self.active_weapon == ActiveWeapon.BOOMERANG:
             weapon_name = "Boomerang"
         else:
@@ -552,20 +548,13 @@ class GameView(arcade.View):
         )
         weapon_text.draw()
 
-        # =========================
-        # Extension : affichage des vies
-        # =========================
-
+    def _draw_health_ui(self) -> None:
         # On affiche un cœur plein pour chaque vie restante.
         full_hearts = "♥ " * self.player.health
 
         # On affiche un cœur vide pour chaque vie perdue.
         empty_hearts = "♡ " * (self.player.max_health - self.player.health)
 
-        # Exemple :
-        # 3 vies -> ♥ ♥ ♥
-        # 2 vies -> ♥ ♥ ♡
-        # 1 vie  -> ♥ ♡ ♡
         hearts = full_hearts + empty_hearts
 
         hearts_text = arcade.Text(
@@ -577,10 +566,7 @@ class GameView(arcade.View):
         )
         hearts_text.draw()
 
-        # =========================
-        # Extension : affichage du bouclier
-        # =========================
-
+    def _draw_shield_ui(self) -> None:
         if self.player.has_active_shield():
             shield_text_value = f"Bouclier: {self.player.shield_time:.1f}s"
         else:
@@ -1137,3 +1123,4 @@ class GameView(arcade.View):
     def _restart_game(self) -> None:
         new_view = GameView(self.map)
         self.window.show_view(new_view)
+
