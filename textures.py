@@ -164,7 +164,7 @@ PLAYER_RUN_ANIMATIONS: Final[dict[Direction, arcade.TextureAnimation]] = {
     for direction, file_direction in DIRECTION_NAMES.items()
 }
 
-
+#refactoring 
 ANIMATION_PLAYER_IDLE_DOWN: Final[arcade.TextureAnimation] = PLAYER_IDLE_ANIMATIONS[
     Direction.SOUTH
 ]

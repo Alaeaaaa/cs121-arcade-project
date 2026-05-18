@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 from typing import Final, Any
 
 import yaml
@@ -12,16 +12,16 @@ import yaml
 # ==================================================
 
 class GridCell(Enum):
-    GRASS = 1
-    BUSH = 2
-    CRYSTAL = 3
-    SPINNER_HORIZONTAL = 4
-    SPINNER_VERTICAL = 5
-    HOLE = 6
-    BAT = 7
-    SLIME = 8
-    SWITCH = 9
-    GATE = 10
+    GRASS = auto()
+    BUSH = auto()
+    CRYSTAL = auto()
+    SPINNER_HORIZONTAL = auto()
+    SPINNER_VERTICAL = auto()
+    HOLE = auto()
+    BAT = auto()
+    SLIME = auto()
+    SWITCH = auto()
+    GATE = auto()
 
 
 # ==================================================
@@ -49,6 +49,7 @@ class SwitchIsOn(GateCondition):
         if self.switch_id not in switch_states:
             raise InvalidMapFileException(
                 f"Switch inconnu dans une condition : {self.switch_id}"
+                #La map est invalide, car elle parle d’un switch qui n’existe pas.
             )
 
         return switch_states[self.switch_id]

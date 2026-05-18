@@ -5,6 +5,7 @@ import arcade
 from direction import Direction
 from textures import ANIMATION_SWORD
 
+#voir la taille dial sword 
 
 class SwordState(Enum):
     # L'épée existe dans le jeu, mais elle n'est pas en train d'attaquer.

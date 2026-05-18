@@ -316,7 +316,7 @@ class GameView(arcade.View):
 
         for slime in self.slimes:
             slime_sprite = arcade.TextureAnimationSprite(
-                animation=ANIMATION_BAT,
+                animation=ANIMATION_BAT,   #error AJOUTER L'ANIMATION
                 scale=SCALE,
                 center_x=slime.x,
                 center_y=slime.y,

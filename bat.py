@@ -39,7 +39,7 @@ class Bat:
     # Zone dans laquelle la chauve-souris peut bouger.
     bounds: BatBounds
 
-
+#refactoriser
 def grid_to_pixels(i: int) -> int:
     # Convertit une coordonnée de grille vers le centre de la case en pixels.
     return i * TILE_SIZE + TILE_SIZE // 2
@@ -49,7 +49,7 @@ def clamp(value: int, min_value: int, max_value: int) -> int:
     # Force value à rester dans [min_value, max_value].
     return max(min_value, min(value, max_value))
 
-
+#refactoriser
 def find_cells(game_map: Map, target: GridCell) -> list[tuple[int, int]]:
     # Trouve toutes les cases d'un certain type dans la map.
     return [

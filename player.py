@@ -98,6 +98,7 @@ class Player(arcade.TextureAnimationSprite):
         # On choisit l'animation selon la direction.
         # Pour chaque direction, il y a une animation idle
         # et une animation de course.
+        #à refactoriser 
         if self.direction == Direction.SOUTH:
             if is_moving:
                 self.animation = ANIMATION_PLAYER_RUN_DOWN
@@ -172,4 +173,5 @@ class Player(arcade.TextureAnimationSprite):
         else:
             # Si le joueur n'est plus invincible,
             # on le rend complètement visible.
+            #alpha veut dire opacité / transparence
             self.alpha = 255
