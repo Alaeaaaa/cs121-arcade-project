@@ -50,8 +50,8 @@ class SwitchIsOn(GateCondition):
         if self.switch_id not in switch_states:
             raise InvalidMapFileException(
                 f"Switch inconnu dans une condition : {self.switch_id}"
+                # La map est invalide, car elle parle d'un switch qui n'existe pas.
             )
-
         return switch_states[self.switch_id]
 
 
@@ -88,6 +88,11 @@ class OrCondition(GateCondition):
 
 
 def parse_gate_condition(data: Any) -> GateCondition:
+    # Une condition de portail est un dictionnaire YAML avec exactement une clef.
+    # Exemples valides :
+    #   { switch_is_on: "s1" }
+    #   { not: [{ switch_is_on: "s1" }] }
+    #   { and: [{ switch_is_on: "s1" }, { switch_is_on: "s2" }] }
     if not isinstance(data, dict):
         raise InvalidMapFileException("Une condition de portail doit être un dictionnaire")
 
@@ -100,19 +105,16 @@ def parse_gate_condition(data: Any) -> GateCondition:
     if key == "switch_is_on":
         if not isinstance(value, str):
             raise InvalidMapFileException("switch_is_on doit contenir un id de switch")
-
         return SwitchIsOn(value)
 
     if key == "not":
         if not isinstance(value, list) or len(value) != 1:
             raise InvalidMapFileException("not doit contenir une liste de 1 condition")
-
         return NotCondition(parse_gate_condition(value[0]))
 
     if key == "and":
         if not isinstance(value, list) or len(value) != 2:
             raise InvalidMapFileException("and doit contenir une liste de 2 conditions")
-
         return AndCondition(
             parse_gate_condition(value[0]),
             parse_gate_condition(value[1]),
@@ -121,7 +123,6 @@ def parse_gate_condition(data: Any) -> GateCondition:
     if key == "or":
         if not isinstance(value, list) or len(value) != 2:
             raise InvalidMapFileException("or doit contenir une liste de 2 conditions")
-
         return OrCondition(
             parse_gate_condition(value[0]),
             parse_gate_condition(value[1]),
@@ -189,37 +190,23 @@ def parse_gate_config(data: Any) -> GateConfig:
     if open_if is None:
         raise InvalidMapFileException("Chaque gate doit avoir open_if")
 
-    return GateConfig(
-        x=x,
-        y=y,
-        open_if=parse_gate_condition(open_if),
-    )
+    return GateConfig(x=x, y=y, open_if=parse_gate_condition(open_if))
 
 
 def parse_switches(data: Any) -> list[SwitchConfig]:
     if data is None:
         return []
-
     if not isinstance(data, list):
         raise InvalidMapFileException("switches doit être une liste")
-
-    return [
-        parse_switch_config(item)
-        for item in data
-    ]
+    return [parse_switch_config(item) for item in data]
 
 
 def parse_gates(data: Any) -> list[GateConfig]:
     if data is None:
         return []
-
     if not isinstance(data, list):
         raise InvalidMapFileException("gates doit être une liste")
-
-    return [
-        parse_gate_config(item)
-        for item in data
-    ]
+    return [parse_gate_config(item) for item in data]
 
 
 # ==================================================
@@ -251,6 +238,8 @@ class Map:
         self.switch_configs = switch_configs
         self.gate_configs = gate_configs
 
+        # Par défaut, toutes les cellules sont de l'herbe.
+        # Elles seront remplacées au moment du chargement de la map.
         self._cells = [
             [GridCell.GRASS for _ in range(width)]
             for _ in range(height)
@@ -259,7 +248,6 @@ class Map:
     def get(self, x: int, y: int) -> GridCell:
         if x < 0 or x >= self.width or y < 0 or y >= self.height:
             raise ValueError("Coordonnées hors de la grille")
-
         return self._cells[y][x]
 
 
@@ -270,20 +258,21 @@ class Map:
 def map_from_file(path: str) -> Map:
     with open(path, "r") as f:
         text = f.read()
-
     return map_from_string(text)
 
 
 def split_map_file(text: str) -> tuple[str, list[str]]:
+    # Un fichier de map est divisé en trois parties par "---" :
+    #   1. La configuration YAML (width, height, switches, gates...)
+    #   2. La grille de caractères
+    #   3. (vide, juste pour terminer proprement le fichier)
     parts = text.split("---")
 
     if len(parts) != 3:
         raise InvalidMapFileException("Le fichier doit contenir deux séparateurs ---")
 
     config_text = parts[0]
-    grid_text = parts[1]
-
-    grid_lines = grid_text.strip("\n").split("\n")
+    grid_lines = parts[1].strip("\n").split("\n")
 
     return config_text, grid_lines
 
@@ -297,46 +286,46 @@ def parse_config(config_text: str) -> dict[str, Any]:
     return data
 
 
+# Dictionnaire de conversion caractère → cellule.
+#
+# Avantage par rapport à une chaîne de if/elif :
+# pour ajouter un nouveau type de cellule, il suffit d'ajouter
+# une ligne ici, sans toucher à la logique de cell_from_char.
+#
+# Caractères disponibles :
+#   ' ' → herbe (sol vide)
+#   'x' → buisson (mur)
+#   '*' → cristal (à collecter)
+#   'O' → trou (danger)
+#   's' → spinner horizontal
+#   'S' → spinner vertical
+#   'v' → chauve-souris
+#   'm' → slime
+#   '^' → switch
+#   '|' → portail
+#   'P' → position de départ du joueur (traité comme de l'herbe)
+_CHAR_TO_CELL: dict[str, GridCell] = {
+    " ": GridCell.GRASS,
+    "x": GridCell.BUSH,
+    "*": GridCell.CRYSTAL,
+    "O": GridCell.HOLE,
+    "s": GridCell.SPINNER_HORIZONTAL,
+    "S": GridCell.SPINNER_VERTICAL,
+    "v": GridCell.BAT,
+    "m": GridCell.SLIME,
+    "^": GridCell.SWITCH,
+    "|": GridCell.GATE,
+    "P": GridCell.GRASS,
+    "A": GridCell.SHIELD,
+}
+
+
 def cell_from_char(char: str, x: int, y: int) -> GridCell:
-    if char == " ":
-        return GridCell.GRASS
-
-    if char == "x":
-        return GridCell.BUSH
-
-    if char == "*":
-        return GridCell.CRYSTAL
-
-    if char == "A":
-        return GridCell.SHIELD
-
-    if char == "O":
-        return GridCell.HOLE
-
-    if char == "s":
-        return GridCell.SPINNER_HORIZONTAL
-
-    if char == "S":
-        return GridCell.SPINNER_VERTICAL
-
-    if char == "v":
-        return GridCell.BAT
-
-    if char == "m":
-        return GridCell.SLIME
-
-    if char == "^":
-        return GridCell.SWITCH
-
-    if char == "|":
-        return GridCell.GATE
-
-    if char == "P":
-        return GridCell.GRASS
-
-    raise InvalidMapFileException(
-        f"Caractère inconnu dans la map à ({x}, {y}) : {char}"
-    )
+    if char not in _CHAR_TO_CELL:
+        raise InvalidMapFileException(
+            f"Caractère inconnu dans la map à ({x}, {y}) : {char}"
+        )
+    return _CHAR_TO_CELL[char]
 
 
 def validate_switches_and_gates(
@@ -344,6 +333,8 @@ def validate_switches_and_gates(
     switch_configs: list[SwitchConfig],
     gate_configs: list[GateConfig],
 ) -> None:
+    # On vérifie que chaque switch déclaré dans le YAML
+    # a bien un '^' à sa position dans la grille.
     switch_ids: set[str] = set()
 
     for switch_config in switch_configs:
@@ -351,7 +342,6 @@ def validate_switches_and_gates(
             raise InvalidMapFileException(
                 f"Id de switch dupliqué : {switch_config.switch_id}"
             )
-
         switch_ids.add(switch_config.switch_id)
 
         if cells[switch_config.y][switch_config.x] != GridCell.SWITCH:
@@ -359,6 +349,7 @@ def validate_switches_and_gates(
                 f"Il doit y avoir un ^ à la position du switch {switch_config.switch_id}"
             )
 
+    # Même vérification pour les portails : chaque gate doit avoir un '|'.
     for gate_config in gate_configs:
         if cells[gate_config.y][gate_config.x] != GridCell.GATE:
             raise InvalidMapFileException(
@@ -366,7 +357,65 @@ def validate_switches_and_gates(
             )
 
 
+@dataclass
+class _GridParseResult:
+    """
+    Résultat intermédiaire de la construction de la grille.
+
+    On sépare la construction de la grille dans sa propre fonction
+    pour que map_from_string reste lisible : elle orchestre les étapes,
+    _parse_grid s'occupe du détail ligne par ligne.
+    """
+    cells: list[list[GridCell]]
+    player_x: int
+    player_y: int
+
+
+def _parse_grid(grid_lines: list[str], width: int, height: int) -> _GridParseResult:
+    """
+    Construit la grille de cellules depuis les lignes de texte.
+    Cherche la position de départ du joueur ('P') au passage.
+    """
+    if len(grid_lines) != height:
+        raise InvalidMapFileException("La hauteur de la map ne correspond pas")
+
+    player_x = None
+    player_y = None
+    cells: list[list[GridCell]] = []
+
+    for y in range(height):
+        line = grid_lines[y]
+
+        if len(line) != width:
+            raise InvalidMapFileException(f"La ligne {y} n'a pas la bonne largeur")
+
+        row: list[GridCell] = []
+
+        for x in range(width):
+            char = line[x]
+
+            if char == "P":
+                # On mémorise la position de départ du joueur.
+                # S'il y en a plusieurs, la map est invalide.
+                if player_x is not None:
+                    raise InvalidMapFileException(
+                        "La map contient plusieurs positions de départ"
+                    )
+                player_x = x
+                player_y = y
+
+            row.append(cell_from_char(char, x, y))
+
+        cells.append(row)
+
+    if player_x is None or player_y is None:
+        raise InvalidMapFileException("La map ne contient pas de position de départ")
+
+    return _GridParseResult(cells=cells, player_x=player_x, player_y=player_y)
+
+
 def map_from_string(text: str) -> Map:
+    # Étape 1 : séparer le fichier en config YAML et grille de caractères.
     config_text, grid_lines = split_map_file(text)
     config = parse_config(config_text)
 
@@ -379,62 +428,27 @@ def map_from_string(text: str) -> Map:
     if not isinstance(height, int):
         raise InvalidMapFileException("height doit être un entier")
 
+    # Étape 2 : parser les switches et gates depuis la config YAML.
     switch_configs = parse_switches(config.get("switches"))
     gate_configs = parse_gates(config.get("gates"))
 
-    if len(grid_lines) != height:
-        raise InvalidMapFileException("La hauteur de la map ne correspond pas")
+    # Étape 3 : construire la grille et trouver la position du joueur.
+    grid = _parse_grid(grid_lines, width, height)
 
-    player_x = None
-    player_y = None
+    # Étape 4 : valider que les switches et gates sont bien placés dans la grille.
+    validate_switches_and_gates(grid.cells, switch_configs, gate_configs)
 
-    cells: list[list[GridCell]] = []
-
-    for y in range(height):
-        line = grid_lines[y]
-
-        if len(line) != width:
-            raise InvalidMapFileException(
-                f"La ligne {y} n'a pas la bonne largeur"
-            )
-
-        row: list[GridCell] = []
-
-        for x in range(width):
-            char = line[x]
-
-            if char == "P":
-                if player_x is not None:
-                    raise InvalidMapFileException(
-                        "La map contient plusieurs positions de départ"
-                    )
-
-                player_x = x
-                player_y = y
-
-            row.append(cell_from_char(char, x, y))
-
-        cells.append(row)
-
-    if player_x is None or player_y is None:
-        raise InvalidMapFileException("La map ne contient pas de position de départ")
-
-    validate_switches_and_gates(
-        cells,
-        switch_configs,
-        gate_configs,
-    )
-
+    # Étape 5 : assembler l'objet Map final.
     game_map = Map(
         width=width,
         height=height,
-        player_start_x=player_x,
-        player_start_y=player_y,
+        player_start_x=grid.player_x,
+        player_start_y=grid.player_y,
         switch_configs=switch_configs,
         gate_configs=gate_configs,
     )
 
-    game_map._cells = cells
+    game_map._cells = grid.cells
 
     return game_map
 

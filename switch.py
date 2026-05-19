@@ -12,8 +12,9 @@ class Switch:
     y: int
     is_on: bool
 
-    # Sert à éviter qu'une arme toggle le switch 60 fois par seconde
-    # pendant qu'elle touche le switch.
+    # Sert à éviter qu'une arme toggle le switch 60 fois par seconde.
+    # Mis à True dès que l'arme touche le switch, remis à False quand elle s'éloigne.
+    # Le toggle n'a lieu que sur le front montant (False -> True).
     is_being_hit: bool
 
 
