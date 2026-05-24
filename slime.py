@@ -6,6 +6,7 @@ import random
 import arcade
 
 from constants import (
+    SCALE,
     SLIME_SPEED,
     PATROL_RADIUS,
     DESTINATION_EPSILON,
@@ -36,7 +37,7 @@ class Slime(Enemy):
         y: float,
         possible_destinations: list[tuple[int, int]],
     ) -> None:
-        super().__init__(animation=ANIMATION_BAT)  # TODO: ANIMATION_SLIME
+        super().__init__(animation=ANIMATION_BAT, scale=SCALE)  # TODO: ANIMATION_SLIME
 
         self.start_x = start_x
         self.start_y = start_y

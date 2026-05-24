@@ -5,8 +5,8 @@ import arcade
 
 class Enemy(arcade.TextureAnimationSprite, ABC):
 
-    def __init__(self, animation: arcade.TextureAnimation) -> None:
-        super().__init__(animation=animation)
+    def __init__(self, animation: arcade.TextureAnimation, scale: float) -> None:
+        super().__init__(animation=animation, scale=scale)
 
     @abstractmethod
     def update_logic(self, **kwargs) -> None:

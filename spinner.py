@@ -1,3 +1,4 @@
+from constants import SCALE
 from __future__ import annotations
 
 from map import GridCell, Map
@@ -26,7 +27,7 @@ class Spinner(Enemy):
         min_y: int,
         max_y: int,
     ) -> None:
-        super().__init__(animation=ANIMATION_SPINNER)
+        super().__init__(animation=ANIMATION_SPINNER, scale=SCALE)
 
         self.grid_x = x
         self.grid_y = y

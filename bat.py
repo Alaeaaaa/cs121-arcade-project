@@ -6,17 +6,9 @@ import random
 from map import Map, GridCell
 from utils import grid_to_pixels, find_cells
 from enemy import Enemy
+from textures import ANIMATION_BAT
 
-
-# ==================================================
-# Constantes des chauves-souris
-# ==================================================
-from constants import (
-    BAT_SPEED,
-    BAT_WIDTH ,
-    BAT_HEIGHT 
-)
-
+from constants import BAT_SPEED, BAT_WIDTH, BAT_HEIGHT, SCALE
 
 
 def _clamp(value: int, min_value: int, max_value: int) -> int:
@@ -29,9 +21,7 @@ def _random_velocity(rng: random.Random, speed: float) -> tuple[float, float]:
 
 
 class Bat(Enemy):
-    
-    #Chauve-souris : rebondit dans un rectangle de mouvement.
-    
+    """Chauve-souris : rebondit dans un rectangle de mouvement."""
 
     def __init__(
         self,
@@ -44,24 +34,18 @@ class Bat(Enemy):
         min_y: int,
         max_y: int,
     ) -> None:
-        super().__init__()
+        super().__init__(animation=ANIMATION_BAT, scale=SCALE)
 
-        # Position logique en pixels.
         self.logic_x = start_x
         self.logic_y = start_y
-
-        # Vitesse en pixels/frame.
         self.dx = dx
         self.dy = dy
-
-        # Limites de la zone de mouvement en pixels.
         self.min_x = min_x
         self.max_x = max_x
         self.min_y = min_y
         self.max_y = max_y
 
     def update_logic(self, **kwargs) -> None:
-        # Déplacement + rebond sur les bords.
         self.logic_x += self.dx
         self.logic_y += self.dy
 
@@ -82,12 +66,7 @@ class Bat(Enemy):
 # Factories
 # --------------------------------------------------
 
-def _compute_bat_bounds(
-    game_map: Map,
-    x: int,
-    y: int,
-) -> tuple[int, int, int, int]:
-    # Retourne (min_x, max_x, min_y, max_y) en pixels.
+def _compute_bat_bounds(game_map: Map, x: int, y: int) -> tuple[int, int, int, int]:
     min_grid_x = _clamp(x - BAT_WIDTH // 2, 0, game_map.width - 1)
     max_grid_x = _clamp(x + BAT_WIDTH // 2, 0, game_map.width - 1)
     min_grid_y = _clamp(y - BAT_HEIGHT // 2, 0, game_map.height - 1)
