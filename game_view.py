@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Final
+import random
 
 import arcade
 
@@ -24,7 +24,7 @@ from player import Player
 from spinner import create_spinners
 from bat import create_bats
 from navmesh import create_navmesh
-from slime import create_slimes, update_slime_movement
+from slime import create_slimes
 from switch import create_gates, create_switches, toggle_switch, update_gates
 from utils import grid_to_pixels
 
@@ -32,8 +32,6 @@ from enemy_system import EnemySystem
 from weapon_system import WeaponSystem
 from collision_handler import CollisionHandler
 from world_renderer import WorldRenderer
-
-import random
 
 
 class GameView(arcade.View):
@@ -51,11 +49,9 @@ class GameView(arcade.View):
         self._setup_player()
         self._setup_world()
         self._setup_switches_and_gates()
-        self._setup_enemies()
 
         self.navmesh = create_navmesh(self.map)
-        self._setup_slimes()
-
+        self._setup_enemies()
         self._setup_systems()
         self._setup_keyboard()
 
@@ -108,37 +104,30 @@ class GameView(arcade.View):
                                    center_x=grid_to_pixels(gate.x),
                                    center_y=grid_to_pixels(gate.y))
             self.gate_sprites.append(sprite)
+            # Les portes fermées sont des murs au départ.
             if not gate.is_open:
                 self.walls.append(sprite)
 
     def _setup_enemies(self) -> None:
-        spinners_logic = create_spinners(self.map)
-        spinner_sprites = arcade.SpriteList()
-        for s in spinners_logic:
-            spinner_sprites.append(arcade.TextureAnimationSprite(
-                animation=ANIMATION_SPINNER, scale=SCALE,
-                center_x=grid_to_pixels(s.x), center_y=grid_to_pixels(s.y),
-            ))
-        self.spinners = EnemySystem(spinners_logic, spinner_sprites)
+        bats = create_bats(self.map, self.random)
+        slimes = create_slimes(self.map, self.navmesh, self.random)
+        spinners = create_spinners(self.map)
 
-        bats_logic = create_bats(self.map, self.random)
-        bat_sprites = arcade.SpriteList()
-        for b in bats_logic:
-            bat_sprites.append(arcade.TextureAnimationSprite(
-                animation=ANIMATION_BAT, scale=SCALE,
-                center_x=b.x, center_y=b.y,
-            ))
-        self.bats = EnemySystem(bats_logic, bat_sprites)
+        self.enemies = EnemySystem(
+            bats=bats,
+            slimes=slimes,
+            spinners=spinners,
+        )
 
-    def _setup_slimes(self) -> None:
-        slimes_logic = create_slimes(self.map, self.navmesh, self.random)
-        slime_sprites = arcade.SpriteList()
-        for s in slimes_logic:
-            slime_sprites.append(arcade.TextureAnimationSprite(
-                animation=ANIMATION_BAT,  # TODO: remplacer par ANIMATION_SLIME
-                scale=SCALE, center_x=s.x, center_y=s.y,
-            ))
-        self.slimes = EnemySystem(slimes_logic, slime_sprites)
+        # Assigne les animations aux sprites de chaque type d'ennemi.
+        for bat in self.enemies.bat_sprites:
+            bat.animation = ANIMATION_BAT
+
+        for slime in self.enemies.slime_sprites:
+            slime.animation = ANIMATION_BAT  # TODO: remplacer par ANIMATION_SLIME
+
+        for spinner in self.enemies.spinner_sprites:
+            spinner.animation = ANIMATION_SPINNER
 
     def _setup_systems(self) -> None:
         self.weapons = WeaponSystem(self.player)
@@ -146,9 +135,7 @@ class GameView(arcade.View):
         self.collisions = CollisionHandler(
             player=self.player,
             weapon_system=self.weapons,
-            spinners=self.spinners,
-            bats=self.bats,
-            slimes=self.slimes,
+            enemies=self.enemies,
             crystals=self.crystals,
             shields=self.shields,
             holes=self.holes,
@@ -165,9 +152,7 @@ class GameView(arcade.View):
         self.renderer = WorldRenderer(
             player=self.player,
             weapons=self.weapons,
-            spinners=self.spinners,
-            bats=self.bats,
-            slimes=self.slimes,
+            enemies=self.enemies,
             grounds=self.grounds,
             walls=self.walls,
             gate_sprites=self.gate_sprites,
@@ -222,9 +207,20 @@ class GameView(arcade.View):
         self.player.update_invincibility(delta_time)
         self.player.update_shield(delta_time)
 
-        self._update_animations()
-        self._update_enemies(delta_time)
+        # Animations des cristaux.
+        for crystal in self.crystals:
+            crystal.update_animation()
 
+        # Logique et animations de tous les ennemis.
+        self.enemies.update(
+            navmesh=self.navmesh,
+            rng=self.random,
+            player_position=self.player.position,
+            walls=self.walls,
+        )
+        self.enemies.update_animations()
+
+        # Logique et animations des armes.
         self.weapons.update(
             delta_time=delta_time,
             walls=self.walls,
@@ -233,77 +229,11 @@ class GameView(arcade.View):
             on_enemy_hit_sword=self.collisions.weapon_hits_enemies,
             on_crystal_hit=self.collisions.weapon_hits_crystals,
         )
-
-        self.collisions.handle_player()
-        self.camera.position = self.player.position
-
-    # ==================================================
-    # Ennemis
-    # ==================================================
-
-    def _update_animations(self) -> None:
-        for crystal in self.crystals:
-            crystal.update_animation()
-        self.spinners.update_animations()
-        self.bats.update_animations()
         self.weapons.update_animations()
 
-    def _update_enemies(self, delta_time: float) -> None:
-        self._update_spinners()
-        self._update_bats()
-        self._update_slimes()
-
-    def _update_spinners(self) -> None:
-        from spinner import Direction as SD
-        from constants import SPINNER_MOVEMENT_SPEED
-
-        for spinner, sprite in zip(self.spinners.logic, self.spinners.sprites):
-            if spinner.horizontal:
-                if spinner.direction == SD.POSITIF:
-                    sprite.center_x += SPINNER_MOVEMENT_SPEED
-                    if sprite.center_x >= grid_to_pixels(spinner.limites.max_x):
-                        sprite.center_x = grid_to_pixels(spinner.limites.max_x)
-                        spinner.direction = SD.NEGATIF
-                else:
-                    sprite.center_x -= SPINNER_MOVEMENT_SPEED
-                    if sprite.center_x <= grid_to_pixels(spinner.limites.min_x):
-                        sprite.center_x = grid_to_pixels(spinner.limites.min_x)
-                        spinner.direction = SD.POSITIF
-            else:
-                if spinner.direction == SD.POSITIF:
-                    sprite.center_y += SPINNER_MOVEMENT_SPEED
-                    if sprite.center_y >= grid_to_pixels(spinner.limites.max_y):
-                        sprite.center_y = grid_to_pixels(spinner.limites.max_y)
-                        spinner.direction = SD.NEGATIF
-                else:
-                    sprite.center_y -= SPINNER_MOVEMENT_SPEED
-                    if sprite.center_y <= grid_to_pixels(spinner.limites.min_y):
-                        sprite.center_y = grid_to_pixels(spinner.limites.min_y)
-                        spinner.direction = SD.POSITIF
-
-    def _update_bats(self) -> None:
-        for bat, sprite in zip(self.bats.logic, self.bats.sprites):
-            bat.x += bat.dx
-            bat.y += bat.dy
-
-            if bat.x < bat.bounds.min_x or bat.x > bat.bounds.max_x:
-                bat.dx = -bat.dx
-                bat.x += bat.dx
-            if bat.y < bat.bounds.min_y or bat.y > bat.bounds.max_y:
-                bat.dy = -bat.dy
-                bat.y += bat.dy
-
-            sprite.center_x = bat.x
-            sprite.center_y = bat.y
-
-    def _update_slimes(self) -> None:
-        for slime, sprite in zip(self.slimes.logic, self.slimes.sprites):
-            update_slime_movement(
-                slime, self.navmesh, self.random,
-                self.player.position, self.walls,
-            )
-            sprite.center_x = slime.x
-            sprite.center_y = slime.y
+        # Collisions joueur.
+        self.collisions.handle_player()
+        self.camera.position = self.player.position
 
     # ==================================================
     # Switches et gates
@@ -312,6 +242,7 @@ class GameView(arcade.View):
     def _sync_gate(self, switch, switch_sprite: arcade.Sprite) -> None:
         toggle_switch(switch)
 
+        # Met à jour la texture du switch.
         if switch.is_on:
             switch_sprite.texture = TEXTURE_SWITCH_ON
         else:
@@ -319,6 +250,7 @@ class GameView(arcade.View):
 
         update_gates(self.switches, self.gates)
 
+        # Synchronise les textures et les murs des portes.
         for gate, gate_sprite in zip(self.gates, self.gate_sprites):
             if gate.is_open:
                 gate_sprite.texture = TEXTURE_GATE_OPEN
@@ -362,6 +294,7 @@ class GameView(arcade.View):
     # ==================================================
 
     def _create_cell_sprites(self, x: int, y: int) -> None:
+        # Toutes les cases ont une herbe en fond.
         self.grounds.append(arcade.Sprite(
             TEXTURE_GRASS, scale=SCALE,
             center_x=grid_to_pixels(x), center_y=grid_to_pixels(y),
