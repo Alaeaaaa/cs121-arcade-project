@@ -108,7 +108,7 @@ TEXTURE_HOLE: Final[arcade.Texture] = _overworld_grid[18 * 4 + 8]
 # ==================================================
 
 TEXTURE_SHIELD: Final[arcade.Texture] = arcade.load_texture(
-    ":resources:/images/items/coinGold.png"
+    ":resources:/images/items/star.png"
 )
 
 

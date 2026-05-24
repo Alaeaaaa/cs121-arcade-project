@@ -1,308 +1,198 @@
-# Log du projet
 
-## Semaine 1
+### `LOG.md`
 
-Nous n’avons pas travaillé sur le projet cette semaine.
+```md
+# LOG.md
 
----
+## Semaine 1 — Découverte d’Arcade
 
-## Semaine 2
+Nous avons commencé par créer la structure de base du projet avec `main.py`, `gameview.py` et `constants.py`.
 
-Temps de travail : environ 4 heures
+Nous avons installé Arcade avec `uv`, puis créé une fenêtre de jeu. Ensuite, nous avons ajouté les premiers sprites : le joueur, l’herbe et les buissons.
 
-Cette semaine nous avons commencé le projet et découvert la bibliothèque Arcade.
+Nous avons appris à utiliser les `SpriteList`, car elles permettent de dessiner plusieurs sprites plus efficacement qu’en appelant `draw_sprite` à chaque fois.
 
-Nous avons :
+Nous avons aussi ajouté le déplacement du joueur au clavier, puis un moteur physique simple avec `arcade.PhysicsEngineSimple` pour empêcher le joueur de traverser les buissons.
 
-- créé le projet avec les fichiers `main.py`, `gameview.py` et `constants.py`
-- installé la bibliothèque Arcade avec `uv`
-- ouvert une première fenêtre avec un fond bleu
-- ajouté le joueur avec un sprite
-- créé le monde avec de l’herbe et des buissons
-- ajouté les déplacements du joueur avec le clavier
+Nous avons ensuite ajouté une caméra qui suit le joueur, des animations pour le joueur et des cristaux collectables.
 
-**Difficultés**
-
-Au début c’était un peu difficile de comprendre comment fonctionnent les `SpriteList` et comment Arcade dessine les objets à l’écran.
+Difficultés rencontrées :
+- comprendre le système de coordonnées Arcade ;
+- comprendre la différence entre une texture, un sprite et une SpriteList ;
+- comprendre pourquoi il fallait utiliser une caméra ;
+- gérer les collisions correctement.
 
 ---
 
-## Semaine 3
+## Semaine 2 — Maps et spinners
 
-Nous n’avons pas travaillé sur le projet cette semaine.
+Nous avons remplacé la map codée directement dans `GameView` par une vraie structure `Map`.
 
----
+Nous avons créé une énumération `GridCell` pour représenter les différents types de cellules : herbe, buisson, cristal, spinner, trou, etc.
 
-## Semaine 4
+Nous avons ensuite implémenté le chargement d’une map depuis un fichier texte. La fonction `map_from_string` lit la configuration, vérifie la taille de la map, cherche la position du joueur et transforme les caractères de la grille en `GridCell`.
 
-Temps de travail : environ 8 heures
+Nous avons aussi créé une exception personnalisée `InvalidMapFileException` pour gérer les erreurs de format de manière propre.
 
-Nous avons continué le projet et ajouté plusieurs nouvelles fonctionnalités au jeu.
+Ensuite, nous avons ajouté les spinners. Un spinner horizontal ou vertical est créé depuis la map. Ses limites de déplacement sont calculées une seule fois au lancement du jeu.
 
-Nous avons :
-
-- ajouté le moteur physique pour empêcher le joueur de traverser les buissons
-- ajouté une caméra qui suit le joueur
-- ajouté les animations du joueur
-- ajouté les cristaux à collecter
-- ajouté un son lorsque le joueur ramasse un cristal
-
-Nous avons aussi implémenté les **spinners** (petits monstres qui se déplacent en ligne droite).
-
-Pour cela nous avons :
-
-- ajouté les cellules `SPINNER_HORIZONTAL` et `SPINNER_VERTICAL` dans la map
-- créé un fichier `spinner.py` pour gérer la logique des spinners
-- écrit une fonction qui calcule les limites de déplacement d’un spinner en regardant les obstacles dans la map
-- créé une classe `Spinner` pour stocker sa position, sa direction et ses limites
-- ajouté les sprites des spinners dans `GameView`
-- ajouté leur animation
-- implémenté leur déplacement automatique entre leurs limites
-- ajouté la collision entre le joueur et un spinner (le jeu recommence si le joueur touche un spinner)
-
-Nous avons ensuite ajouté la fonctionnalité principale de cette semaine : **le boomerang**.
-
-Pour cela nous avons :
-
-- créé un fichier `boomerang.py`
-- défini un `Enum` `BoomerangState` pour gérer les trois états du boomerang : `INACTIVE`, `LAUNCHING` et `RETURNING`
-- créé une classe `Boomerang` qui hérite de `TextureAnimationSprite`
-- ajouté l’animation du boomerang dans `textures.py`
-- ajouté le boomerang dans `GameView`
-- implémenté le lancement du boomerang lorsque le joueur appuie sur la touche `D`
-- fait partir le boomerang dans la direction dans laquelle regarde le joueur
-- limité la distance de déplacement du boomerang à 8 cellules
-- implémenté le retour du boomerang vers le joueur
-- ajouté la collision entre le boomerang et les spinners (le boomerang peut les éliminer)
-- fait en sorte que le boomerang traverse les obstacles lors du retour
-
-**Difficultés**
-
-Nous avons eu quelques problèmes avec l’import du son `SOUND_COIN` et avec le comportement de la caméra.
-
-Pour les spinners, la partie la plus difficile était de comprendre comment calculer correctement leurs limites de déplacement uniquement à partir de la map.
-
-Pour le boomerang, la partie la plus difficile était de gérer correctement les différents états (`INACTIVE`, `LAUNCHING`, `RETURNING`) et de faire revenir le boomerang vers le joueur même lorsque celui-ci se déplace.
-
-## semaine 5 :
-
-Temps de travail : environ 2h.
-
-Nous avons ajouté une nouvelle fonctionnalité du joueur : **le sword**
-
-Pour cela, nous avond procédé comme suit:
-
-- création du fichier `sword.py`
-- définition d'une nouvelle classe  :
-`Enum` `SwordState` pour déterminer si l'épée est effectivement l'arme active : `INACTIVE` et `ACTIVE`
-- créé une classe `Sword` qui hérite de `TextureAnimationSprite`
-- ajouté l'animation de l'épée à `textures.py`
-
-**Difficultés**
-
-Même avec l'existence de la classe Boomerang, nous avons eu quelques difficultés à construire la classe Sword en prenant en compte tous ses attributs.
-
-Par ailleurs, il était assez compliqué de coder les animations de l'épée de façon "élégante" et de les stocker dans une seule structure : un dictionnaire.
-
-## semaine 6 :
-
-Temps de travail : environ 7 heures.
-
-Cette semaine s'est révélée plus fatstidieuse que prévue car nous avons du terminer la construction de la classe Sword et son implémentation dans Gameview + la création des **chauve-souris**, nous avons donc :
-
-- ajouté l'épée à Gameview
-- codé la nouvelle touche `R`pour le changement d'ames
-- modifié le code de la touche `D` pour inclure le comportment de l'épée
-- ajouté un nouvel attribut :`active_weapon`et de l' `Enum` qui la représente : `ActiveWeapon` pour pouvoir passer du boomerang à l'épée plus facilement.
-- ajouté la collision entre l'épée et les crystaux
-- ajouté la collision entre l'épée et les spinners
-
-nous avons également ajouté la nouvelle classe de monstres : **les chauves-souris**.
-Pour cela, nous avons :
-
-- ajouté les cellules `BAT` dans la map
-- ajouté l'animation des chauve-souris dans `textures.py`
-- créé le fichier `bat.py`
-- ajouté une nouvelle classe `BatBounds` pour déterminer les limites de mvt des chauve-souris
-- ajouté une nouvelle classe `Bat` pour représenter les chauve-souris, fortement inspiré de la classe `Spinner`
-- ajouté une fonction pour calculer leurs limites de déplacement
-- ajouté une fonction pour créer les chauves-souris à partir de leur position sur la map
-- ajouté leurs sprites dans `gameview.py`
-- impléménté leurs déplacements dans des directions "semi-aléatoires" dans les limites de leur zone d'action
-- ajouté leur collisions avec le boomerang, l'épée, et le joueur.
-
-**Difficultés**
-
-L'ajout de l'icône des armes est un aspect assez difficile à aborder, en particulier quand on ignore la majorité des commandes de la caméra d'arcade.
-
-L'ajout des commandes de la touche `R` en tenant compte des deux armes a pris du temps, et la modification de la touche `D` pour inclure les commandes de l'épée également.
-
-La délimitation de la zone d'action des chauves-souris ET SURTOUT la mise à jour de leur direction, EN VEILLANT à ne pas dépasser les limites de la zone est ce qui a pris le plus de temps.
+Difficultés rencontrées :
+- gérer les coordonnées dans la grille ;
+- vérifier qu’il y a exactement un joueur ;
+- produire des messages d’erreur clairs ;
+- calculer les limites des spinners sans dépendre d’Arcade.
 
 ---
 
-## Semaine 7
+## Semaine 3 — Trous, joueur et boomerang
 
-Temps de travail : environ 8 heures.
+Nous avons créé une classe `Player` séparée. Avant cela, beaucoup de logique du joueur était directement dans `GameView`.
 
-Cette semaine, nous avons ajouté une nouvelle classe d’ennemis : **les blobs / slimes**.
+La classe `Player` gère maintenant la direction du joueur, son mouvement et ses animations.
 
-L’objectif était de créer des ennemis plus intelligents que les spinners et les chauves-souris. Contrairement aux autres monstres, les slimes ne se déplacent pas simplement en ligne droite ou dans une zone fixe : ils peuvent patrouiller, voir le joueur, puis le poursuivre en évitant les obstacles.
+Nous avons ajouté l’énumération `Direction`, qui permet de représenter les quatre directions cardinales. Elle est utilisée par le joueur, l’épée et le boomerang.
 
-Nous avons commencé par modifier la map pour ajouter une nouvelle cellule :
+Nous avons ajouté les trous avec le caractère `O`. Le joueur tombe s’il est trop proche du centre d’un trou.
 
-- ajout de la cellule `SLIME` dans `GridCell`
-- utilisation du caractère `m` dans les fichiers de map pour représenter un slime
-- création d’un fichier `slime.py`
-- création d’une classe `Slime` pour stocker :
-  - sa position de départ
-  - sa position actuelle
-  - sa destination
-  - ses destinations possibles de patrouille
-  - son chemin courant
-  - l’indice du point du chemin qu’il suit actuellement
+Nous avons ensuite ajouté le score et une interface fixe à l’écran grâce à une deuxième caméra.
 
-Nous avons ensuite ajouté une logique de patrouille.
+Enfin, nous avons ajouté le boomerang. Il possède trois états :
+- inactif ;
+- lancement ;
+- retour.
 
-Pour cela, nous avons :
+Le boomerang part dans la direction du joueur, revient après une certaine distance ou lorsqu’il touche un obstacle, et peut tuer des ennemis.
 
-- défini un rayon de patrouille autour de la position initiale du slime
-- écrit une fonction qui cherche les cases accessibles autour du slime
-- empêché les slimes de choisir comme destination les buissons, les trous et les portails
-- choisi aléatoirement une destination parmi les cases valides
-- fait avancer le slime vers sa destination
-- choisi une nouvelle destination quand il atteint la précédente
-
-Ensuite, nous avons ajouté la ligne de vue du slime vers le joueur.
-
-Pour cela, nous avons :
-
-- ajouté une distance maximale de vision
-- utilisé `arcade.has_line_of_sight` pour vérifier si un obstacle bloque la vue
-- fait en sorte que les buissons et les portails fermés bloquent la vue
-- gardé les trous comme obstacles pour le déplacement, mais pas comme obstacles pour la ligne de vue
-- fait poursuivre le joueur par le slime uniquement lorsqu’il est visible
-
-Nous avons ensuite ajouté le pathfinding avec un navmesh.
-
-Pour cela, nous avons :
-
-- installé `networkx` avec `uv`
-- créé un fichier `navmesh.py`
-- représenté les cases accessibles par des nœuds dans un graphe
-- ajouté des arêtes entre les cases voisines
-- utilisé un poids basé sur la distance euclidienne entre deux cases
-- utilisé l’algorithme de plus court chemin de NetworkX pour calculer le chemin du slime
-- transformé les positions de grille en positions en pixels
-- fait suivre au slime les points du chemin calculé
-
-Nous avons aussi optimisé le comportement du slime.
-
-Pour cela, nous avons :
-
-- évité de recalculer le chemin à chaque frame
-- recalculé le chemin seulement lorsque le joueur s’est suffisamment déplacé
-- ajouté une poursuite directe lorsque le joueur est très proche du slime
-- ajouté une petite tolérance pour considérer que le slime a atteint sa destination
-
-Enfin, nous avons intégré les slimes dans `GameView`.
-
-Nous avons :
-
-- ajouté une liste de slimes dans `GameView`
-- créé les sprites des slimes
-- ajouté leur dessin à l’écran
-- mis à jour leur position à chaque frame
-- ajouté la collision entre le joueur et un slime
-- ajouté la collision entre les slimes et les armes
-- fait recommencer le jeu si le joueur touche un slime
-
-**Difficultés**
-
-La partie la plus difficile était de comprendre comment représenter la map sous forme de graphe. Au début, nous avions seulement des positions en pixels et des cases dans la grille, mais il fallait faire le lien entre les deux.
-
-Le deuxième problème était d’éviter que le slime recalcule son chemin à chaque frame. Cela rendait le comportement moins propre et pouvait ralentir le jeu. Nous avons donc ajouté une condition pour recalculer le chemin seulement quand la destination change vraiment.
-
-Nous avons aussi dû faire attention à la ligne de vue : les trous doivent bloquer le mouvement des slimes, mais ils ne doivent pas bloquer leur vision. À l’inverse, les buissons et les portails fermés bloquent la vision.
+Difficultés rencontrées :
+- gérer les états du boomerang ;
+- faire revenir le boomerang vers le joueur ;
+- éviter que la logique du boomerang rende `GameView` trop grande ;
+- gérer proprement les collisions avec les ennemis.
 
 ---
 
-## Semaine 8
+## Semaine 4 — Épée et chauves-souris
 
-Temps de travail : environ 7 heures.
+Nous avons ajouté une deuxième arme : l’épée.
 
-Cette semaine, nous avons ajouté le système des **interrupteurs et des portails**.
+Le joueur peut changer d’arme avec la touche `R`, puis utiliser l’arme active avec la touche `D`.
 
-L’objectif était de permettre à la map de contenir des éléments interactifs : le joueur peut activer des interrupteurs avec ses armes, et ces interrupteurs ouvrent ou ferment des portails selon des conditions logiques.
+L’épée possède une animation dépendant de la direction du joueur. Elle reste active pendant une courte durée, peut tuer des ennemis et peut aussi collecter des cristaux.
 
-Nous avons commencé par modifier le format des maps.
+Nous avons ensuite ajouté les chauves-souris. Elles sont placées dans la map avec le caractère `v`.
 
-Avant, la map contenait surtout une grille ASCII. Maintenant, nous avons ajouté une partie de configuration en YAML avant la grille.
+Chaque chauve-souris possède une zone de mouvement autour de sa position de départ. Elle se déplace avec une vitesse de norme constante, puis rebondit lorsqu’elle atteint les limites de sa zone.
 
-Cette configuration permet de définir :
+Difficultés rencontrées :
+- gérer deux armes sans dupliquer trop de code ;
+- éviter que le joueur puisse lancer plusieurs attaques en même temps ;
+- synchroniser l’animation de l’épée avec sa durée d’activité ;
+- créer un mouvement aléatoire mais contrôlé pour les chauves-souris.
 
-- la largeur de la map
-- la hauteur de la map
-- la liste des interrupteurs
-- la liste des portails
-- les conditions d’ouverture des portails
+---
 
-Nous avons ajouté deux nouveaux caractères dans la map :
+## Semaine 5 — Refactoring
 
-- `^` pour représenter un interrupteur
-- `|` pour représenter un portail
+Nous avons refactorisé le projet pour mieux séparer les responsabilités.
 
-Dans `map.py`, nous avons donc :
+Nous avons introduit `WeaponSystem` pour gérer les armes. Cela permet de ne plus mettre toute la logique du boomerang et de l’épée dans `GameView`.
 
-- ajouté `SWITCH` dans `GridCell`
-- ajouté `GATE` dans `GridCell`
-- ajouté la lecture du YAML avec `pyyaml`
-- installé `pyyaml` avec `uv`
-- créé une classe `SwitchConfig` pour stocker la configuration d’un interrupteur
-- créé une classe `GateConfig` pour stocker la configuration d’un portail
-- vérifié que chaque interrupteur déclaré dans le YAML correspond bien à un `^` dans la grille
-- vérifié que chaque portail déclaré dans le YAML correspond bien à un `|` dans la grille
-- vérifié que les identifiants des interrupteurs sont uniques
-- ajouté des messages d’erreur plus précis en cas de problème dans la map
+Nous avons aussi créé `EnemySystem`, qui relie les objets logiques des ennemis à leurs sprites. Cela permet de supprimer un ennemi logique et son sprite en même temps.
 
-Ensuite, nous avons ajouté les conditions logiques des portails.
+Nous avons créé `CollisionHandler` pour centraliser les collisions du joueur et des armes.
 
-Nous avons créé plusieurs classes :
+Nous avons créé `WorldRenderer` pour regrouper l’affichage du monde et de l’interface.
 
-- `GateCondition`
+Ce refactoring a rendu `GameView` plus lisible : elle garde le rôle d’orchestration, mais délègue les détails à d’autres classes.
+
+Difficultés rencontrées :
+- décider quelles responsabilités sortir de `GameView` ;
+- garder la synchronisation entre objets logiques et sprites ;
+- éviter les imports circulaires ;
+- garder le projet compréhensible malgré plus de fichiers.
+
+---
+
+## Semaine 6 — Blobs, navmesh, switches et gates
+
+Nous avons ajouté les slimes, qui sont des ennemis plus intelligents.
+
+Contrairement aux spinners et aux chauves-souris, les slimes utilisent un navmesh pour trouver un chemin vers leur destination.
+
+Nous avons représenté le navmesh avec NetworkX. Les nœuds sont des tuples `(x, y)` correspondant aux cellules accessibles de la map. Les buissons, trous et portails sont des obstacles pour les slimes.
+
+Nous avons connecté les nœuds voisins avec des arêtes pondérées par la distance euclidienne. Cela permet d’utiliser Dijkstra pour calculer un plus court chemin.
+
+Les slimes patrouillent dans une zone autour de leur position de départ. S’ils voient le joueur, ils changent leur destination vers sa position.
+
+Nous avons aussi ajouté les switches et gates.
+
+Les switches peuvent être activés par une arme. Les gates s’ouvrent ou se ferment selon des conditions logiques écrites dans la configuration YAML de la map.
+
+Nous avons représenté ces conditions avec des classes récursives :
 - `SwitchIsOn`
 - `NotCondition`
 - `AndCondition`
 - `OrCondition`
 
-Ces classes permettent de représenter des formules logiques récursives.
+Difficultés rencontrées :
+- comprendre comment utiliser NetworkX ;
+- relier les positions en pixels aux nœuds du graphe ;
+- éviter de recalculer le chemin du slime à chaque frame ;
+- parser les conditions YAML des portails ;
+- éviter qu’un switch soit activé plusieurs fois par seconde pendant une collision.
 
-Par exemple, un portail peut être ouvert si :
+---
 
-```yaml
-open_if:
-  switch_is_on: first
+## Semaine 7 — Extensions personnelles et finalisation
 
+Nous avons ajouté deux extensions personnelles : un système de vies et un système de bouclier.
 
-## Extension : système de vies / cœurs
+Pour le système de vies, le joueur possède plusieurs cœurs. Lorsqu’il prend un dégât, il perd une vie et revient au début de la map. Après un dégât, il devient invincible pendant un court moment.
 
-Nous avons ajouté un système de vies pour le joueur.
+Pour le système de bouclier, nous avons ajouté un nouvel objet dans la map avec le caractère `A`. Quand le joueur le ramasse, il obtient un bouclier temporaire. Si le joueur prend un dégât pendant que le bouclier est actif, le bouclier absorbe le coup.
 
-Avant cette extension, le joueur recommençait directement la partie lorsqu’il touchait un ennemi ou tombait dans un trou. Maintenant, le joueur possède 3 vies. Lorsqu’il touche un danger, il perd seulement une vie et revient à sa position de départ.
+Nous avons aussi ajouté l’affichage des vies et du bouclier dans l’interface.
 
-Pour éviter que le joueur perde plusieurs vies instantanément en restant en collision avec un ennemi, nous avons ajouté une courte période d’invincibilité après chaque dégât. Pendant cette période, le joueur clignote, ce qui rend l’effet visible pour l’utilisateur.
+Nous avons finalisé le fichier `DESIGN.md` pour expliquer les choix d’architecture du projet.
 
-Nous avons aussi ajouté un affichage des vies dans l’interface sous forme de cœurs. Cela permet au joueur de voir clairement combien de vies il lui reste.
+Difficultés rencontrées :
+- intégrer les extensions sans casser les collisions existantes ;
+- éviter que le joueur perde toutes ses vies instantanément ;
+- afficher clairement les informations dans l’interface ;
+- garder une architecture propre malgré l’ajout de nouvelles fonctionnalités.
 
-Fichiers modifiés :
-- `constants.py` : ajout des constantes `PLAYER_MAX_HEALTH` et `PLAYER_INVINCIBILITY_DURATION`.
-- `player.py` : ajout des attributs `health`, `max_health`, `invincibility_time`, et des méthodes liées aux dégâts.
-- `gameview.py` : ajout de la logique de perte de vie, de respawn, d’invincibilité et d’affichage des cœurs.
+---
 
-Ce qui fonctionne :
-- Le joueur commence avec 3 vies.
-- Toucher un spinner, une bat, un slime ou un trou enlève une vie.
-- Après un dégât, le joueur revient à sa position de départ.
-- Le joueur devient temporairement invincible après un dégât.
-- Le joueur clignote pendant l’invincibilité.
-- Quand les vies arrivent à 0, la partie recommence complètement.
+## Répartition du travail
+
+Nous avons réparti le travail principalement par fonctionnalités.
+
+Une personne s’est concentrée davantage sur les armes, notamment le boomerang, l’épée et le système d’armes.
+
+L’autre personne s’est concentrée davantage sur les ennemis, notamment les spinners, les chauves-souris, les slimes et leurs déplacements.
+
+Les fichiers communs comme `GameView`, `Map`, les collisions, les switches/gates et l’affichage ont été discutés ensemble, car ils relient plusieurs parties du jeu.
+
+---
+
+## État final du projet
+
+À la fin du projet, notre jeu contient :
+
+- un joueur animé ;
+- une map chargée depuis un fichier ;
+- des cristaux ;
+- des trous ;
+- un score ;
+- deux armes ;
+- plusieurs types d’ennemis ;
+- des switches ;
+- des gates ;
+- des slimes avec navmesh ;
+- un système de vies ;
+- un système de bouclier ;
+- une interface utilisateur ;
+- des tests pytest pour une partie importante de la logique.
+
+Le projet pourrait encore être amélioré avec plus de tests, une meilleure factorisation de certaines fonctions utilitaires et une classe abstraite plus complète pour les ennemis.
