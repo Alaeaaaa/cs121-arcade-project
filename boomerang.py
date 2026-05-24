@@ -5,7 +5,7 @@ from textures import ANIMATION_BOOMERANG
 from weapon_system import Weapon  # Weapon est dans weapon.py, pas weapon_system.py
 
 
-BOOMERANG_SCALE = 2
+from constants import (BOOMERANG_SCALE)
 
 
 class BoomerangState(Enum):

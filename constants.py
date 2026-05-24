@@ -60,6 +60,8 @@ BOOMERANG_CATCH_DISTANCE = 8
 # Durée de l'attaque à l'épée, en secondes.
 SWORD_ATTACK_DURATION = 0.3
 
+BOOMERANG_SCALE = 2
+
 
 # =========================
 # Collisions dangereuses
@@ -75,3 +77,21 @@ HOLE_DEATH_DISTANCE = 16
 
 # Les textures Arcade des switches sont grandes, donc on les réduit.
 SWITCH_SCALE = 0.25
+
+# ==================================================
+# Constantes des slimes
+# ==================================================
+SLIME_SPEED = 1.0
+PATROL_RADIUS = 3
+DESTINATION_EPSILON = 4.0
+MAX_VIEW_DISTANCE = 12 * TILE_SIZE
+DIRECT_CHASE_DISTANCE = 2 * TILE_SIZE
+RECOMPUTE_PATH_DISTANCE = TILE_SIZE // 2
+
+# ==================================================
+# Constantes des chauves-souris
+# ==================================================
+
+BAT_SPEED = 2.0
+BAT_WIDTH = 6
+BAT_HEIGHT = 4
