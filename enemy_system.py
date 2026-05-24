@@ -14,10 +14,8 @@ if TYPE_CHECKING:
 
 
 class EnemySystem:
-    
-    #Gère tous les ennemis : bats, slimes, spinners.
-    #Miroir de WeaponSystem.
-    
+    # Gère tous les ennemis : bats, slimes, spinners.
+    # Miroir de WeaponSystem.
 
     def __init__(
         self,
@@ -99,3 +97,7 @@ class EnemySystem:
         return hit
 
     def _remove_hits(self, weapon: arcade.Sprite, sprite_list: arcade.SpriteList) -> bool:
+        hit_sprites = arcade.check_for_collision_with_list(weapon, sprite_list)
+        for sprite in hit_sprites:
+            sprite.remove_from_sprite_lists()
+        return len(hit_sprites) > 0
