@@ -11,15 +11,13 @@ if TYPE_CHECKING:
 
 
 class WorldRenderer:
-    """Responsable unique du dessin : monde et interface."""
+    # Responsable unique du dessin : monde et interface.
 
     def __init__(
         self,
         player: Player,
         weapons: WeaponSystem,
-        spinners: EnemySystem,
-        bats: EnemySystem,
-        slimes: EnemySystem,
+        enemies: EnemySystem,
         grounds: arcade.SpriteList,
         walls: arcade.SpriteList,
         gate_sprites: arcade.SpriteList,
@@ -31,9 +29,7 @@ class WorldRenderer:
     ) -> None:
         self.player = player
         self.weapons = weapons
-        self.spinners = spinners
-        self.bats = bats
-        self.slimes = slimes
+        self.enemies = enemies
         self.grounds = grounds
         self.walls = walls
         self.gate_sprites = gate_sprites
@@ -55,11 +51,15 @@ class WorldRenderer:
         self.crystals.draw()
         self.shields.draw()
         self.switch_sprites.draw()
-        self.spinners.sprites.draw()
-        self.bats.sprites.draw()
-        self.slimes.sprites.draw()
+
+        # Dessin de tous les ennemis.
+        self.enemies.bat_sprites.draw()
+        self.enemies.slime_sprites.draw()
+        self.enemies.spinner_sprites.draw()
+
         self.player_list.draw()
 
+        # Dessin des armes actives.
         if self.weapons.boomerang.is_active():
             self.weapons.boomerang_list.draw()
         if self.weapons.sword.is_active():
