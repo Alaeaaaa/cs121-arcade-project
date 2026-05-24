@@ -6,10 +6,8 @@ import arcade
 
 from constants import MAX_WINDOW_HEIGHT, MAX_WINDOW_WIDTH, SCALE, SHIELD_SCALE, SWITCH_SCALE, TILE_SIZE
 from textures import (
-    ANIMATION_BAT,
     ANIMATION_CRYSTAL,
     ANIMATION_PLAYER_IDLE_DOWN,
-    ANIMATION_SPINNER,
     TEXTURE_BUSH,
     TEXTURE_GATE_CLOSED,
     TEXTURE_GATE_OPEN,
@@ -104,11 +102,12 @@ class GameView(arcade.View):
                                    center_x=grid_to_pixels(gate.x),
                                    center_y=grid_to_pixels(gate.y))
             self.gate_sprites.append(sprite)
-            # Les portes fermées sont des murs au départ.
             if not gate.is_open:
                 self.walls.append(sprite)
 
     def _setup_enemies(self) -> None:
+        # Chaque ennemi connaît déjà sa propre animation (définie dans son __init__).
+        # Pas besoin de patcher quoi que ce soit ici.
         bats = create_bats(self.map, self.random)
         slimes = create_slimes(self.map, self.navmesh, self.random)
         spinners = create_spinners(self.map)
@@ -118,16 +117,6 @@ class GameView(arcade.View):
             slimes=slimes,
             spinners=spinners,
         )
-
-        # Assigne les animations aux sprites de chaque type d'ennemi.
-        for bat in self.enemies.bat_sprites:
-            bat.animation = ANIMATION_BAT
-
-        for slime in self.enemies.slime_sprites:
-            slime.animation = ANIMATION_BAT  # TODO: remplacer par ANIMATION_SLIME
-
-        for spinner in self.enemies.spinner_sprites:
-            spinner.animation = ANIMATION_SPINNER
 
     def _setup_systems(self) -> None:
         self.weapons = WeaponSystem(self.player)
@@ -207,11 +196,9 @@ class GameView(arcade.View):
         self.player.update_invincibility(delta_time)
         self.player.update_shield(delta_time)
 
-        # Animations des cristaux.
         for crystal in self.crystals:
             crystal.update_animation()
 
-        # Logique et animations de tous les ennemis.
         self.enemies.update(
             navmesh=self.navmesh,
             rng=self.random,
@@ -220,7 +207,6 @@ class GameView(arcade.View):
         )
         self.enemies.update_animations()
 
-        # Logique et animations des armes.
         self.weapons.update(
             delta_time=delta_time,
             walls=self.walls,
@@ -231,7 +217,6 @@ class GameView(arcade.View):
         )
         self.weapons.update_animations()
 
-        # Collisions joueur.
         self.collisions.handle_player()
         self.camera.position = self.player.position
 
@@ -242,7 +227,6 @@ class GameView(arcade.View):
     def _sync_gate(self, switch, switch_sprite: arcade.Sprite) -> None:
         toggle_switch(switch)
 
-        # Met à jour la texture du switch.
         if switch.is_on:
             switch_sprite.texture = TEXTURE_SWITCH_ON
         else:
@@ -250,7 +234,6 @@ class GameView(arcade.View):
 
         update_gates(self.switches, self.gates)
 
-        # Synchronise les textures et les murs des portes.
         for gate, gate_sprite in zip(self.gates, self.gate_sprites):
             if gate.is_open:
                 gate_sprite.texture = TEXTURE_GATE_OPEN
@@ -272,11 +255,9 @@ class GameView(arcade.View):
         took_damage = self.player.take_damage()
         if not took_damage:
             return
-
         if self.player.health <= 0:
             self._restart_game()
             return
-
         self._respawn_player()
 
     def _respawn_player(self) -> None:
@@ -294,7 +275,6 @@ class GameView(arcade.View):
     # ==================================================
 
     def _create_cell_sprites(self, x: int, y: int) -> None:
-        # Toutes les cases ont une herbe en fond.
         self.grounds.append(arcade.Sprite(
             TEXTURE_GRASS, scale=SCALE,
             center_x=grid_to_pixels(x), center_y=grid_to_pixels(y),

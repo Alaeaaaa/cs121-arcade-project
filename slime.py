@@ -17,6 +17,7 @@ from map import GridCell, Map
 from navmesh import NavMesh, Point, shortest_path
 from utils import grid_to_pixels, find_cells
 from enemy import Enemy
+from textures import ANIMATION_BAT  # TODO: remplacer par ANIMATION_SLIME quand la texture existe
 
 
 class Slime(Enemy):
@@ -35,21 +36,15 @@ class Slime(Enemy):
         y: float,
         possible_destinations: list[tuple[int, int]],
     ) -> None:
-        super().__init__()
+        super().__init__(animation=ANIMATION_BAT)  # TODO: ANIMATION_SLIME
 
         self.start_x = start_x
         self.start_y = start_y
-
-        # Position logique en pixels.
         self.logic_x = x
         self.logic_y = y
-
-        # Destination finale actuelle en pixels.
         self.destination_x = destination_x
         self.destination_y = destination_y
-
         self.possible_destinations = possible_destinations
-
         self.current_path: list[Point] = []
         self.current_path_index: int = 0
 
@@ -122,11 +117,9 @@ class Slime(Enemy):
         self._recompute_path(navmesh)
 
     def _set_destination_to_player(self, navmesh: NavMesh, player_position: Point) -> None:
-        # Ne recalcule que si le joueur a suffisamment bougé.
         destination = (self.destination_x, self.destination_y)
         if math.dist(destination, player_position) <= RECOMPUTE_PATH_DISTANCE:
             return
-
         self.destination_x, self.destination_y = player_position
         self._recompute_path(navmesh)
 
@@ -148,10 +141,8 @@ class Slime(Enemy):
 
     def _can_see_player(self, player_position: Point, walls: arcade.SpriteList) -> bool:
         slime_position = (self.logic_x, self.logic_y)
-
         if math.dist(slime_position, player_position) > MAX_VIEW_DISTANCE:
             return False
-
         return arcade.has_line_of_sight(slime_position, player_position, walls)
 
 
@@ -207,7 +198,6 @@ def create_slime(
     )
 
     slime._recompute_path(navmesh)
-
     return slime
 
 

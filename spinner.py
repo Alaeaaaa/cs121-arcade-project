@@ -1,13 +1,9 @@
 from __future__ import annotations
 
 from map import GridCell, Map
-from utils import find_cells
 from enemy import Enemy
+from textures import ANIMATION_SPINNER
 
-
-# ==================================================
-# Constantes des spinners
-# ==================================================
 
 class SpinnerDirection:
     POSITIF = 1
@@ -30,16 +26,12 @@ class Spinner(Enemy):
         min_y: int,
         max_y: int,
     ) -> None:
-        super().__init__()
+        super().__init__(animation=ANIMATION_SPINNER)
 
-        # Position logique dans la grille.
         self.grid_x = x
         self.grid_y = y
-
         self.horizontal = horizontal
         self.grid_direction: int = SpinnerDirection.POSITIF
-
-        # Limites dans la grille.
         self.min_x = min_x
         self.max_x = max_x
         self.min_y = min_y
@@ -48,12 +40,10 @@ class Spinner(Enemy):
     def update_logic(self, **kwargs) -> None:
         if self.horizontal:
             self.grid_x += self.grid_direction
-
             if self.grid_x >= self.max_x or self.grid_x <= self.min_x:
                 self.grid_direction = -self.grid_direction
         else:
             self.grid_y += self.grid_direction
-
             if self.grid_y >= self.max_y or self.grid_y <= self.min_y:
                 self.grid_direction = -self.grid_direction
 
@@ -112,10 +102,9 @@ def create_spinner(game_map: Map, x: int, y: int) -> Spinner:
 
 
 def create_spinners(game_map: Map) -> list[Spinner]:
-    spinner_cells = [
-        (x, y)
+    return [
+        create_spinner(game_map, x, y)
         for y in range(game_map.height)
         for x in range(game_map.width)
         if game_map.get(x, y) in {GridCell.SPINNER_HORIZONTAL, GridCell.SPINNER_VERTICAL}
     ]
-    return [create_spinner(game_map, x, y) for x, y in spinner_cells]

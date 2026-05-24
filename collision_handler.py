@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from enemy_system import EnemySystem
     from switch import Switch, Gate
     from weapon_system import WeaponSystem
-    from textures import TEXTURE_SWITCH_ON, TEXTURE_SWITCH_OFF
 
 
 class CollisionHandler:
@@ -27,9 +26,7 @@ class CollisionHandler:
         self,
         player: Player,
         weapon_system: WeaponSystem,
-        spinners: EnemySystem,
-        bats: EnemySystem,
-        slimes: EnemySystem,
+        enemies: EnemySystem,
         crystals: arcade.SpriteList,
         shields: arcade.SpriteList,
         holes: arcade.SpriteList,
@@ -44,9 +41,7 @@ class CollisionHandler:
     ) -> None:
         self.player = player
         self.weapons = weapon_system
-        self.spinners = spinners
-        self.bats = bats
-        self.slimes = slimes
+        self.enemies = enemies
         self.crystals = crystals
         self.shields = shields
         self.holes = holes
@@ -89,11 +84,7 @@ class CollisionHandler:
             self.on_damage()
 
     def _player_touches_enemy(self) -> bool:
-        return (
-            bool(arcade.check_for_collision_with_list(self.player, self.spinners.sprites))
-            or bool(arcade.check_for_collision_with_list(self.player, self.bats.sprites))
-            or bool(arcade.check_for_collision_with_list(self.player, self.slimes.sprites))
-        )
+        return self.enemies.player_touches_enemy(self.player)
 
     def _player_touches_hole(self) -> bool:
         nearby = arcade.check_for_collision_with_list(self.player, self.holes)
@@ -107,10 +98,7 @@ class CollisionHandler:
     # --------------------------------------------------
 
     def weapon_hits_enemies(self, weapon: arcade.Sprite) -> bool:
-        hit_bat = self.bats.weapon_hits(weapon)
-        hit_spinner = self.spinners.weapon_hits(weapon)
-        hit_slime = self.slimes.weapon_hits(weapon)
-        return hit_bat or hit_spinner or hit_slime
+        return self.enemies.weapon_hits(weapon)
 
     def weapon_hits_crystals(self, weapon: arcade.Sprite) -> None:
         hit = arcade.check_for_collision_with_list(weapon, self.crystals)
