@@ -2,11 +2,12 @@ from enum import Enum, auto
 
 from direction import Direction
 from textures import ANIMATION_BOOMERANG
-from weapon_system import Weapon  # Weapon est dans weapon.py, pas weapon_system.py
+from weapon import Weapon 
 
 
-from constants import (BOOMERANG_SCALE)
-
+from constants import (
+    BOOMERANG_SCALE
+)
 
 class BoomerangState(Enum):
     INACTIVE = auto()

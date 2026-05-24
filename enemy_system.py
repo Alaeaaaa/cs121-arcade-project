@@ -1,51 +1,101 @@
 from __future__ import annotations
 
-from typing import Generic, TypeVar
+import random
+from typing import TYPE_CHECKING
 
 import arcade
 
-TLogic = TypeVar("TLogic")
-TSprite = TypeVar("TSprite", bound=arcade.Sprite)
+from bat import Bat
+from slime import Slime
+from spinner import Spinner
+
+if TYPE_CHECKING:
+    from navmesh import NavMesh, Point
 
 
-class EnemySystem(Generic[TLogic, TSprite]):
-    """
-    Associe une liste de données logiques à une SpriteList parallèle.
-
-    Invariant : logic[i] correspond toujours à sprites[i].
-    """
+class EnemySystem:
+    
+    #Gère tous les ennemis : bats, slimes, spinners.
+    #Miroir de WeaponSystem.
+    
 
     def __init__(
         self,
-        logic: list[TLogic],
-        sprites: arcade.SpriteList,
+        bats: list[Bat],
+        slimes: list[Slime],
+        spinners: list[Spinner],
     ) -> None:
-        self.logic = logic
-        self.sprites = sprites
+        self.bats = bats
+        self.slimes = slimes
+        self.spinners = spinners
 
-    def remove_sprite(self, target: arcade.Sprite) -> None:
-        """Supprime un sprite et son objet logique associé."""
-        for i, sprite in enumerate(self.sprites):
-            if sprite is target:
-                sprite.remove_from_sprite_lists()
-                self.logic.pop(i)
-                return
+        self.bat_sprites: arcade.SpriteList = arcade.SpriteList()
+        self.slime_sprites: arcade.SpriteList = arcade.SpriteList()
+        self.spinner_sprites: arcade.SpriteList = arcade.SpriteList()
 
-    def weapon_hits(self, weapon: arcade.Sprite) -> bool:
-        """
-        Vérifie les collisions entre l'arme et les sprites ennemis.
-        Supprime les ennemis touchés. Retourne True si au moins un ennemi touché.
-        """
-        hit = arcade.check_for_collision_with_list(weapon, self.sprites)
+        for bat in bats:
+            bat.sync_sprite()
+            self.bat_sprites.append(bat)
 
-        for sprite in hit:
-            self.remove_sprite(sprite)
+        for slime in slimes:
+            slime.sync_sprite()
+            self.slime_sprites.append(slime)
 
-        return len(hit) > 0
+        for spinner in spinners:
+            spinner.sync_sprite()
+            self.spinner_sprites.append(spinner)
+
+    # --------------------------------------------------
+    # Update principal — appelé chaque frame
+    # --------------------------------------------------
+
+    def update(
+        self,
+        navmesh: NavMesh,
+        rng: random.Random,
+        player_position: Point,
+        walls: arcade.SpriteList,
+    ) -> None:
+        for bat in self.bats:
+            bat.update_logic()
+            bat.sync_sprite()
+
+        for slime in self.slimes:
+            slime.update_logic(
+                navmesh=navmesh,
+                rng=rng,
+                player_position=player_position,
+                walls=walls,
+            )
+            slime.sync_sprite()
+
+        for spinner in self.spinners:
+            spinner.update_logic()
+            spinner.sync_sprite()
 
     def update_animations(self) -> None:
-        for sprite in self.sprites:
+        for sprite in (*self.bat_sprites, *self.slime_sprites, *self.spinner_sprites):
             sprite.update_animation()
 
-    def __len__(self) -> int:
-        return len(self.logic)
+    # --------------------------------------------------
+    # Collisions
+    # --------------------------------------------------
+
+    @property
+    def all_sprites(self) -> list[arcade.SpriteList]:
+        return [self.bat_sprites, self.slime_sprites, self.spinner_sprites]
+
+    def player_touches_enemy(self, player: arcade.Sprite) -> bool:
+        return any(
+            arcade.check_for_collision_with_list(player, sprites)
+            for sprites in self.all_sprites
+        )
+
+    def weapon_hits(self, weapon: arcade.Sprite) -> bool:
+        # Supprime les ennemis touchés. Retourne True si au moins un touché.
+        hit = False
+        for sprite_list in self.all_sprites:
+            hit |= self._remove_hits(weapon, sprite_list)
+        return hit
+
+    def _remove_hits(self, weapon: arcade.Sprite, sprite_list: arcade.SpriteList) -> bool:
