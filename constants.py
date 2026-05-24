@@ -18,7 +18,7 @@ RIGHT_MARGIN = 200
 BOTTOM_MARGIN = 150
 TOP_MARGIN = 150
 
-SPINNER_MOVEMENT_SPEED = 3
+SPINNER_MOVEMENT_SPEED = 6
 
 # =========================
 # Extension : vies du joueur

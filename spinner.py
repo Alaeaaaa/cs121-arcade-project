@@ -1,14 +1,10 @@
-from constants import SCALE
 from __future__ import annotations
 
+from constants import SCALE, SPINNER_MOVEMENT_SPEED, TILE_SIZE
 from map import GridCell, Map
 from enemy import Enemy
 from textures import ANIMATION_SPINNER
-
-
-class SpinnerDirection:
-    POSITIF = 1
-    NEGATIF = -1
+from utils import grid_to_pixels
 
 
 class Spinner(Enemy):
@@ -29,29 +25,34 @@ class Spinner(Enemy):
     ) -> None:
         super().__init__(animation=ANIMATION_SPINNER, scale=SCALE)
 
-        self.grid_x = x
-        self.grid_y = y
+        # Position logique en pixels.
+        self.logic_x = float(grid_to_pixels(x))
+        self.logic_y = float(grid_to_pixels(y))
+
         self.horizontal = horizontal
-        self.grid_direction: int = SpinnerDirection.POSITIF
-        self.min_x = min_x
-        self.max_x = max_x
-        self.min_y = min_y
-        self.max_y = max_y
+        self.direction: int = 1  # +1 ou -1
+
+        # Limites en pixels.
+        self.min_x = float(grid_to_pixels(min_x))
+        self.max_x = float(grid_to_pixels(max_x))
+        self.min_y = float(grid_to_pixels(min_y))
+        self.max_y = float(grid_to_pixels(max_y))
 
     def update_logic(self, **kwargs) -> None:
         if self.horizontal:
-            self.grid_x += self.grid_direction
-            if self.grid_x >= self.max_x or self.grid_x <= self.min_x:
-                self.grid_direction = -self.grid_direction
+            self.logic_x += self.direction * SPINNER_MOVEMENT_SPEED
+            if self.logic_x >= self.max_x or self.logic_x <= self.min_x:
+                self.direction = -self.direction
+                self.logic_x = max(self.min_x, min(self.logic_x, self.max_x))
         else:
-            self.grid_y += self.grid_direction
-            if self.grid_y >= self.max_y or self.grid_y <= self.min_y:
-                self.grid_direction = -self.grid_direction
+            self.logic_y += self.direction * SPINNER_MOVEMENT_SPEED
+            if self.logic_y >= self.max_y or self.logic_y <= self.min_y:
+                self.direction = -self.direction
+                self.logic_y = max(self.min_y, min(self.logic_y, self.max_y))
 
     def sync_sprite(self) -> None:
-        from utils import grid_to_pixels
-        self.center_x = grid_to_pixels(self.grid_x)
-        self.center_y = grid_to_pixels(self.grid_y)
+        self.center_x = self.logic_x
+        self.center_y = self.logic_y
 
 
 # --------------------------------------------------
