@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from enum import Enum
+from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 import arcade
@@ -24,12 +24,12 @@ BOOMERANG_MAX_DISTANCE = BOOMERANG_MAX_DISTANCE_IN_TILES * TILE_SIZE
 
 
 class ActiveWeapon(Enum):
-    BOOMERANG = 1
-    SWORD = 2
+    BOOMERANG = auto()
+    SWORD = auto()
 
 
 class WeaponSystem:
-    """Gère les deux armes du joueur : boomerang et épée."""
+    #Gère les deux armes du joueur : boomerang et épée.
 
     def __init__(self, player: Player) -> None:
         self.player = player
@@ -69,7 +69,7 @@ class WeaponSystem:
             self._start_sword_attack()
 
     def reset(self) -> None:
-        """Remet les armes dans un état propre après un dégât."""
+        #Remet les armes dans un état propre après un dégât.
         self.boomerang.deactivate()
         self.sword.deactivate()
         self.boomerang.position = self.player.position
@@ -156,7 +156,7 @@ class WeaponSystem:
 
     def _update_boomerang_returning(
         self,
-        on_switch_hit: callable,
+        on_switch_hit: callable,  #ajouter les types 
         on_enemy_hit: callable,
     ) -> None:
         dx = self.player.center_x - self.boomerang.center_x

@@ -38,7 +38,7 @@ class InvalidMapFileException(Exception):
 # ==================================================
 
 class GateCondition:
-    def evaluate(self, switch_states: dict[str, bool]) -> bool:
+    def evaluate(self, switch_states: dict[str, bool]) -> bool:   #dire prq ca c mieux que absract methode 
         raise NotImplementedError
 
 
@@ -291,19 +291,7 @@ def parse_config(config_text: str) -> dict[str, Any]:
 # Avantage par rapport à une chaîne de if/elif :
 # pour ajouter un nouveau type de cellule, il suffit d'ajouter
 # une ligne ici, sans toucher à la logique de cell_from_char.
-#
-# Caractères disponibles :
-#   ' ' → herbe (sol vide)
-#   'x' → buisson (mur)
-#   '*' → cristal (à collecter)
-#   'O' → trou (danger)
-#   's' → spinner horizontal
-#   'S' → spinner vertical
-#   'v' → chauve-souris
-#   'm' → slime
-#   '^' → switch
-#   '|' → portail
-#   'P' → position de départ du joueur (traité comme de l'herbe)
+
 _CHAR_TO_CELL: dict[str, GridCell] = {
     " ": GridCell.GRASS,
     "x": GridCell.BUSH,
@@ -359,23 +347,21 @@ def validate_switches_and_gates(
 
 @dataclass
 class _GridParseResult:
-    """
-    Résultat intermédiaire de la construction de la grille.
+    
+    #Résultat intermédiaire de la construction de la grille.
+    #On sépare la construction de la grille dans sa propre fonction pour que map_from_string reste lisible : 
+    # elle orchestre les étapes, _parse_grid s'occupe du détail ligne par ligne.
 
-    On sépare la construction de la grille dans sa propre fonction
-    pour que map_from_string reste lisible : elle orchestre les étapes,
-    _parse_grid s'occupe du détail ligne par ligne.
-    """
     cells: list[list[GridCell]]
     player_x: int
     player_y: int
 
 
 def _parse_grid(grid_lines: list[str], width: int, height: int) -> _GridParseResult:
-    """
-    Construit la grille de cellules depuis les lignes de texte.
-    Cherche la position de départ du joueur ('P') au passage.
-    """
+    
+    #Construit la grille de cellules depuis les lignes de texte.
+    #Cherche la position de départ du joueur ('P') au passage.
+    
     if len(grid_lines) != height:
         raise InvalidMapFileException("La hauteur de la map ne correspond pas")
 
