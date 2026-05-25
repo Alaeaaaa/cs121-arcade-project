@@ -211,7 +211,7 @@ ANIMATION_CRYSTAL: Final[arcade.TextureAnimation] = _load_animation_strip(
 
 ANIMATION_SPINNER: Final[arcade.TextureAnimation] = _load_animation_strip(
     f"{ENEMY_SPRITES}/Spinner_Sprites/spinner_run_attack_anim_all_dir_strip_8.png",
-    frame_count=3,
+    frame_count=8,
 )
 
 ANIMATION_BAT: Final[arcade.TextureAnimation] = _load_animation_strip(

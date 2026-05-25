@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Final, Any
+from abc import ABC, abstractmethod
 
 import yaml
 
@@ -37,9 +38,11 @@ class InvalidMapFileException(Exception):
 # Formules logiques pour les portails
 # ==================================================
 
-class GateCondition:
-    def evaluate(self, switch_states: dict[str, bool]) -> bool:   #dire prq ca c mieux que absract methode 
-        raise NotImplementedError
+class GateCondition(ABC):
+    @abstractmethod
+    def evaluate(self, switch_states: dict[str, bool]) -> bool: 
+        ...
+        
 
 
 @dataclass(frozen=True)
