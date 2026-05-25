@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
@@ -21,6 +22,8 @@ if TYPE_CHECKING:
     from player import Player
 
 BOOMERANG_MAX_DISTANCE = BOOMERANG_MAX_DISTANCE_IN_TILES * TILE_SIZE
+
+WeaponHitCallback = Callable[[arcade.Sprite], bool]
 
 
 class ActiveWeapon(Enum):
@@ -83,10 +86,10 @@ class WeaponSystem:
         self,
         delta_time: float,
         walls: arcade.SpriteList,
-        on_switch_hit: callable,
-        on_enemy_hit_boomerang: callable,
-        on_enemy_hit_sword: callable,
-        on_crystal_hit: callable,
+        on_switch_hit: WeaponHitCallback,
+        on_enemy_hit_boomerang: WeaponHitCallback,
+        on_enemy_hit_sword: WeaponHitCallback,
+        on_crystal_hit: WeaponHitCallback,
     ) -> None:
         self._update_boomerang(walls, on_switch_hit, on_enemy_hit_boomerang)
         self._update_sword(delta_time, on_switch_hit, on_enemy_hit_sword, on_crystal_hit)
@@ -113,8 +116,8 @@ class WeaponSystem:
     def _update_boomerang(
         self,
         walls: arcade.SpriteList,
-        on_switch_hit: callable,
-        on_enemy_hit: callable,
+        on_switch_hit: WeaponHitCallback,
+        on_enemy_hit: WeaponHitCallback,
     ) -> None:
         if self.boomerang.state == BoomerangState.LAUNCHING:
             self._update_boomerang_launching(walls, on_switch_hit, on_enemy_hit)
@@ -124,8 +127,8 @@ class WeaponSystem:
     def _update_boomerang_launching(
         self,
         walls: arcade.SpriteList,
-        on_switch_hit: callable,
-        on_enemy_hit: callable,
+        on_switch_hit: WeaponHitCallback,
+        on_enemy_hit: WeaponHitCallback,
     ) -> None:
         self._move_boomerang_forward()
         self.boomerang.distance_travelled += BOOMERANG_SPEED
@@ -156,8 +159,8 @@ class WeaponSystem:
 
     def _update_boomerang_returning(
         self,
-        on_switch_hit: callable,  #ajouter les types 
-        on_enemy_hit: callable,
+        on_switch_hit: WeaponHitCallback,
+        on_enemy_hit: WeaponHitCallback,
     ) -> None:
         dx = self.player.center_x - self.boomerang.center_x
         dy = self.player.center_y - self.boomerang.center_y
@@ -187,9 +190,9 @@ class WeaponSystem:
     def _update_sword(
         self,
         delta_time: float,
-        on_switch_hit: callable,
-        on_enemy_hit: callable,
-        on_crystal_hit: callable,
+        on_switch_hit: WeaponHitCallback,
+        on_enemy_hit: WeaponHitCallback,
+        on_crystal_hit: WeaponHitCallback,
     ) -> None:
         if not self.sword.is_active():
             return

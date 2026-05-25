@@ -225,6 +225,10 @@ ANIMATION_BOOMERANG: Final[arcade.TextureAnimation] = _load_animation_strip(
     frame_duration=25,
 )
 
+ANIMATION_SLIME: Final[arcade.TextureAnimation] = _load_animation_strip(
+    f"{ENEMY_SPRITES}/Pinkslime_Sprites/pinkslime_idle_anim_all_dir_strip_6.png",
+    frame_count=6,
+)
 
 # ==================================================
 # Animations de l'épée

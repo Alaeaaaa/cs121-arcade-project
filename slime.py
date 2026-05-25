@@ -18,7 +18,7 @@ from map import GridCell, Map
 from navmesh import NavMesh, Point, shortest_path
 from utils import grid_to_pixels, find_cells
 from enemy import Enemy
-from textures import ANIMATION_BAT  # TODO: remplacer par ANIMATION_SLIME quand la texture existe
+from textures import ANIMATION_SLIME  # TODO: remplacer par ANIMATION_SLIME quand la texture existe
 
 
 class Slime(Enemy):
@@ -37,7 +37,7 @@ class Slime(Enemy):
         y: float,
         possible_destinations: list[tuple[int, int]],
     ) -> None:
-        super().__init__(animation=ANIMATION_BAT, scale=SCALE)  # TODO: ANIMATION_SLIME
+        super().__init__(animation=ANIMATION_SLIME, scale=SCALE)  # TODO: ANIMATION_SLIME
 
         self.start_x = start_x
         self.start_y = start_y
