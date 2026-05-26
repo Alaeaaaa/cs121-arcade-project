@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 class CollisionHandler:
     """
     Centralise toutes les collisions :
-    - joueur vs cristaux, boucliers, ennemis, trous
-    - armes vs ennemis, switches, cristaux
+    joueur vs cristaux, boucliers, ennemis, trous
+    armes vs ennemis, switches, cristaux
     """
 
     def __init__(
@@ -59,6 +59,7 @@ class CollisionHandler:
     # --------------------------------------------------
 
     def handle_player(self) -> None:
+        """on gère ici les colliusions du joueur avec les crystaux, boucliers, ennemies et les trous"""
         self._collect_crystals(
             arcade.check_for_collision_with_list(self.player, self.crystals)
         )
@@ -68,25 +69,30 @@ class CollisionHandler:
         self._handle_death_collisions()
 
     def _collect_crystals(self, hit: list[arcade.Sprite]) -> None:
+        """ramassage des crystaux"""
         for crystal in hit:
             crystal.remove_from_sprite_lists()
             arcade.play_sound(SOUND_COIN)
             self.on_score()
 
     def _collect_shields(self, hit: list[arcade.Sprite]) -> None:
+        """ramassage des boucliers"""
         for shield in hit:
             shield.remove_from_sprite_lists()
             self.player.activate_shield()
             arcade.play_sound(SOUND_COIN)
 
     def _handle_death_collisions(self) -> None:
+        """application des dégâts si un ennemi est tocuhé, ou si on tombe dans un trou"""
         if self._player_touches_enemy() or self._player_touches_hole():
             self.on_damage()
 
     def _player_touches_enemy(self) -> bool:
+        """on vérifie si on touche un ennemi"""
         return self.enemies.player_touches_enemy(self.player)
 
     def _player_touches_hole(self) -> bool:
+        """on vérifie si on tombe dans un trou"""
         nearby = arcade.check_for_collision_with_list(self.player, self.holes)
         return any(
             math.dist(self.player.position, hole.position) <= HOLE_DEATH_DISTANCE
@@ -94,17 +100,20 @@ class CollisionHandler:
         )
 
     # --------------------------------------------------
-    # Collisions armes (callbacks passés à WeaponSystem)
+    # Collisions armes
     # --------------------------------------------------
 
     def weapon_hits_enemies(self, weapon: arcade.Sprite) -> bool:
+        #on délègue la tâche à EnemySystem
         return self.enemies.weapon_hits(weapon)
 
     def weapon_hits_crystals(self, weapon: arcade.Sprite) -> None:
+        #permet à l'arme (donc l'épée ici) de ramasser les crystaux
         hit = arcade.check_for_collision_with_list(weapon, self.crystals)
         self._collect_crystals(hit)
 
     def weapon_hits_switches(self, weapon: arcade.Sprite) -> bool:
+        #on active les interrupteurs touchés, et automatiquement on doit mettre à jour les portails
         touched = False
 
         for switch, switch_sprite in zip(self.switches, self.switch_sprites):

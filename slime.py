@@ -18,7 +18,7 @@ from map import GridCell, Map
 from navmesh import NavMesh, Point, shortest_path
 from utils import grid_to_pixels, find_cells
 from enemy import Enemy
-from textures import ANIMATION_SLIME  # TODO: remplacer par ANIMATION_SLIME quand la texture existe
+from textures import ANIMATION_SLIME
 
 
 class Slime(Enemy):
@@ -37,7 +37,7 @@ class Slime(Enemy):
         y: float,
         possible_destinations: list[tuple[int, int]],
     ) -> None:
-        super().__init__(animation=ANIMATION_SLIME, scale=SCALE)  # TODO: ANIMATION_SLIME
+        super().__init__(animation=ANIMATION_SLIME, scale=SCALE)
 
         self.start_x = start_x
         self.start_y = start_y
@@ -49,18 +49,12 @@ class Slime(Enemy):
         self.current_path: list[Point] = []
         self.current_path_index: int = 0
 
-    # --------------------------------------------------
-    # update_logic — appelé par EnemySystem chaque frame
-    # --------------------------------------------------
-
-    def update_logic(
-        self,
-        navmesh: NavMesh,
-        rng: random.Random,
-        player_position: Point,
-        walls: arcade.SpriteList,
-        **kwargs,
-    ) -> None:
+    def update_logic(self,
+    navmesh: NavMesh,
+    rng: random.Random,
+    player_position: Point,
+    walls: arcade.SpriteList,
+    **kwargs,) -> None:
         slime_position = (self.logic_x, self.logic_y)
         distance_to_player = math.dist(slime_position, player_position)
 
@@ -84,6 +78,7 @@ class Slime(Enemy):
     # --------------------------------------------------
 
     def _move_directly_to(self, target: Point) -> None:
+        """on déplace le slime en ligne droite vers un point"""
         tx, ty = target
         dx, dy = tx - self.logic_x, ty - self.logic_y
         distance = math.dist((self.logic_x, self.logic_y), target)
@@ -95,6 +90,7 @@ class Slime(Enemy):
         self.logic_y += SLIME_SPEED * dy / distance
 
     def _follow_current_path(self) -> None:
+        """on fait simplement avancer le slime le long de son chemin actuel"""
         if not self.current_path:
             return
 
@@ -112,12 +108,14 @@ class Slime(Enemy):
     # --------------------------------------------------
 
     def _set_random_destination(self, navmesh: NavMesh, rng: random.Random) -> None:
+        """on choisit une destination au hasard parmi celles possibles, et on recalcule le chemin"""
         dest_x, dest_y = rng.choice(self.possible_destinations)
         self.destination_x = grid_to_pixels(dest_x)
         self.destination_y = grid_to_pixels(dest_y)
         self._recompute_path(navmesh)
 
     def _set_destination_to_player(self, navmesh: NavMesh, player_position: Point) -> None:
+        """on selectionne la position du joueur comme destination, mais juste si elle a "assez changé" """
         destination = (self.destination_x, self.destination_y)
         if math.dist(destination, player_position) <= RECOMPUTE_PATH_DISTANCE:
             return
@@ -130,28 +128,25 @@ class Slime(Enemy):
         self.current_path = shortest_path(navmesh, source, target)
         self.current_path_index = 0
 
-    # --------------------------------------------------
-    # Helpers
-    # --------------------------------------------------
-
+    #quelques méthodes utiles au slime :
     def _has_reached_destination(self) -> bool:
+        """ici c'est pour dire si le slime est arrivé suffisament près de sa destination"""
         return math.dist(
             (self.logic_x, self.logic_y),
             (self.destination_x, self.destination_y),
         ) <= DESTINATION_EPSILON
 
     def _can_see_player(self, player_position: Point, walls: arcade.SpriteList) -> bool:
+        """on vérifie si le slime voit le joueur"""
         slime_position = (self.logic_x, self.logic_y)
         if math.dist(slime_position, player_position) > MAX_VIEW_DISTANCE:
             return False
         return arcade.has_line_of_sight(slime_position, player_position, walls)
 
-
-# --------------------------------------------------
-# Helpers module-privés
-# --------------------------------------------------
-
+#et enfin, des fonctions également utilisées par le slime
 def _is_slime_obstacle(cell: GridCell) -> bool:
+    """les slimes ne peuvent pas marcher sur certains obstacles
+    c'est ce qu'on vérifie ici: """
     return cell in {GridCell.BUSH, GridCell.HOLE}
 
 
@@ -161,18 +156,14 @@ def _can_stand_on(game_map: Map, x: int, y: int) -> bool:
     return not _is_slime_obstacle(game_map.get(x, y))
 
 
-def _patrol_destinations(game_map: Map, start_x: int, start_y: int) -> list[tuple[int, int]]:
+def _patrol_destinations(game_map: Map, start_x: int, start_y: int) -> list[tuple[int,int]]:
+    """determine toutes les cases accessibles dans le rayon de patrouille du slime"""
     return [
         (x, y)
         for y in range(start_y - PATROL_RADIUS, start_y + PATROL_RADIUS + 1)
         for x in range(start_x - PATROL_RADIUS, start_x + PATROL_RADIUS + 1)
         if _can_stand_on(game_map, x, y)
     ]
-
-
-# --------------------------------------------------
-# Factories
-# --------------------------------------------------
 
 def create_slime(
     game_map: Map,
@@ -181,6 +172,7 @@ def create_slime(
     start_y: int,
     rng: random.Random,
 ) -> Slime:
+    #idée de refact pour après : on devrait rassembler cet aspet de création de sprites.
     possible_destinations = _patrol_destinations(game_map, start_x, start_y)
 
     if not possible_destinations:

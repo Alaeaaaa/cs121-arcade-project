@@ -32,7 +32,7 @@ class ActiveWeapon(Enum):
 
 
 class WeaponSystem:
-    #Gère les deux armes du joueur : boomerang et épée.
+    """Gère les deux armes du joueur : boomerang et épée"""
 
     def __init__(self, player: Player) -> None:
         self.player = player
@@ -50,14 +50,14 @@ class WeaponSystem:
         self.sword_list: arcade.SpriteList = arcade.SpriteList()
         self.sword_list.append(self.sword)
 
-    # --------------------------------------------------
-    # État général
-    # --------------------------------------------------
+    #gestion de l'état général:
 
     def all_inactive(self) -> bool:
+        """indique si aucune arme n'est active"""
         return not self.boomerang.is_active() and not self.sword.is_active()
 
     def switch_weapon(self) -> None:
+        """on change d'arme, on voit ici l'utilité de all_inactive"""
         if not self.all_inactive():
             return
         if self.active_weapon == ActiveWeapon.BOOMERANG:
@@ -66,21 +66,20 @@ class WeaponSystem:
             self.active_weapon = ActiveWeapon.BOOMERANG
 
     def use(self) -> None:
+        """utilisattion de l'arme active : """
         if self.active_weapon == ActiveWeapon.BOOMERANG:
             self._launch_boomerang()
         else:
             self._start_sword_attack()
 
     def reset(self) -> None:
-        #Remet les armes dans un état propre après un dégât.
+        """remet les armes dans un état propre après un dégât"""
         self.boomerang.deactivate()
         self.sword.deactivate()
         self.boomerang.position = self.player.position
         self.sword.position = self.player.position
 
-    # --------------------------------------------------
-    # Update principal
-    # --------------------------------------------------
+    #gestion de l'update
 
     def update(
         self,
@@ -91,20 +90,21 @@ class WeaponSystem:
         on_enemy_hit_sword: WeaponHitCallback,
         on_crystal_hit: WeaponHitCallback,
     ) -> None:
+        """mise à jour des armes, et déclenchement des callbacks de collisions"""
         self._update_boomerang(walls, on_switch_hit, on_enemy_hit_boomerang)
         self._update_sword(delta_time, on_switch_hit, on_enemy_hit_sword, on_crystal_hit)
 
     def update_animations(self) -> None:
+        """mise à jour des animations"""
         if self.boomerang.is_active():
             self.boomerang.update_animation()
         if self.sword.is_active():
             self.sword.update_animation()
 
-    # --------------------------------------------------
-    # Boomerang
-    # --------------------------------------------------
+    #gestion du boomerang
 
     def _launch_boomerang(self) -> None:
+        """lancement du boomerang dans la bonne direction"""
         if not self.all_inactive():
             return
         self.boomerang.launch(
@@ -119,6 +119,7 @@ class WeaponSystem:
         on_switch_hit: WeaponHitCallback,
         on_enemy_hit: WeaponHitCallback,
     ) -> None:
+        """mise à jour de l'état du boomerang, en fonction de l'état actuel"""
         if self.boomerang.state == BoomerangState.LAUNCHING:
             self._update_boomerang_launching(walls, on_switch_hit, on_enemy_hit)
         elif self.boomerang.state == BoomerangState.RETURNING:
@@ -130,6 +131,7 @@ class WeaponSystem:
         on_switch_hit: WeaponHitCallback,
         on_enemy_hit: WeaponHitCallback,
     ) -> None:
+        """avancement du boomerang, et retour si il l'une des conditions de retour est remplie"""
         self._move_boomerang_forward()
         self.boomerang.distance_travelled += BOOMERANG_SPEED
 
@@ -144,6 +146,7 @@ class WeaponSystem:
             self.boomerang.return_to_player()
 
     def _move_boomerang_forward(self) -> None:
+        """avancement du boomerang en fct de la direction"""
         match self.boomerang.direction:
             case Direction.NORTH:
                 self.boomerang.center_y += BOOMERANG_SPEED
@@ -155,6 +158,7 @@ class WeaponSystem:
                 self.boomerang.center_x -= BOOMERANG_SPEED
 
     def _boomerang_hits_wall(self, walls: arcade.SpriteList) -> bool:
+        """indique si le boomerang touche un obstacle"""
         return bool(arcade.check_for_collision_with_list(self.boomerang, walls))
 
     def _update_boomerang_returning(
@@ -162,6 +166,7 @@ class WeaponSystem:
         on_switch_hit: WeaponHitCallback,
         on_enemy_hit: WeaponHitCallback,
     ) -> None:
+        """ramène le boomerang vers le joueur et le désactive une fois récupéré"""
         dx = self.player.center_x - self.boomerang.center_x
         dy = self.player.center_y - self.boomerang.center_y
         distance = math.sqrt(dx**2 + dy**2)
@@ -177,11 +182,10 @@ class WeaponSystem:
         on_switch_hit(self.boomerang)
         on_enemy_hit(self.boomerang)
 
-    # --------------------------------------------------
-    # Épée
-    # --------------------------------------------------
+    #gestion de l'épée
 
     def _start_sword_attack(self) -> None:
+        """activation de l'épée à la position du joueur"""
         if not self.all_inactive():
             return
         self.sword.position = self.player.position
@@ -194,6 +198,7 @@ class WeaponSystem:
         on_enemy_hit: WeaponHitCallback,
         on_crystal_hit: WeaponHitCallback,
     ) -> None:
+        """mise à jour de la durée d'attaque de l'épée et de ses collisions"""
         if not self.sword.is_active():
             return
 
@@ -207,3 +212,6 @@ class WeaponSystem:
         on_enemy_hit(self.sword)
         on_crystal_hit(self.sword)
         on_switch_hit(self.sword)
+
+    #idée de refact après: intégrer le comportement du boomerang et épée dans leurs classes, tout en
+    #maintenant l'architecture

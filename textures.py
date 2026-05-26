@@ -13,6 +13,7 @@ from direction import Direction
 
 ORIG_TILE_SIZE: Final[tuple[int, int]] = (16, 16)
 
+"""après refactorisation, il est bcp plus simple de réécrire les racines communes des assets."""
 ASSET_ROOT: Final[str] = "assets/Top_Down_Adventure_Pack_v.1.0"
 CHAR_SPRITES: Final[str] = f"{ASSET_ROOT}/Char_Sprites"
 ENEMY_SPRITES: Final[str] = f"{ASSET_ROOT}/Enemies_Sprites"
@@ -63,6 +64,7 @@ def _load_player_animation(
     action: str,
     direction: str,
 ) -> arcade.TextureAnimation:
+    """spécifique au joueur"""
     return _load_animation_strip(
         f"{CHAR_SPRITES}/char_{action}_{direction}_anim_strip_6.png",
         frame_count=6,
@@ -70,6 +72,7 @@ def _load_player_animation(
 
 
 def _load_sword_animation(direction: str) -> arcade.TextureAnimation:
+    """spécifique à l'épée, car ayant des animations en fct de la direction"""
     return _load_animation_strip(
         f"{CHAR_SPRITES}/char_attack48_{direction}_anim_strip_6.png",
         frame_count=6,
@@ -113,14 +116,8 @@ TEXTURE_SHIELD: Final[arcade.Texture] = arcade.load_texture(
 
 
 # ==================================================
-# Textures des interrupteurs EPFL
+# Textures des interrupteurs
 # ==================================================
-# L'énoncé demande ces deux ressources Arcade :
-#
-# off : ":resources:/images/tiles/leverLeft.png"
-# on  : ":resources:/images/tiles/leverRight.png"
-#
-# Elles font 128x128, donc dans GameView on utilise scale=0.25.
 
 TEXTURE_SWITCH_OFF: Final[arcade.Texture] = arcade.load_texture(
     ":resources:/images/tiles/leverLeft.png"
@@ -132,15 +129,8 @@ TEXTURE_SWITCH_ON: Final[arcade.Texture] = arcade.load_texture(
 
 
 # ==================================================
-# Textures des portails EPFL
+# Textures des portails
 # ==================================================
-# L'énoncé demande le Dungeon_Tileset en grille 13x12.
-#
-# Portail ouvert  : élément (4, 8)
-# Portail fermé  : élément (7, 8)
-#
-# Ici on utilise la formule :
-# index = columns * row + column
 
 TEXTURE_GATE_OPEN: Final[arcade.Texture] = _dungeon_grid[13 * 8 + 4]
 TEXTURE_GATE_CLOSED: Final[arcade.Texture] = _dungeon_grid[13 * 8 + 7]
@@ -171,8 +161,10 @@ PLAYER_RUN_ANIMATIONS: Final[dict[Direction, arcade.TextureAnimation]] = {
     direction: _load_player_animation("run", file_direction)
     for direction, file_direction in DIRECTION_NAMES.items()
 }
+"""programmation dynamique: il est mieux de stocker une seule fois les animations
+que de les recaculer à chaque fois."""
 
-#refactoring 
+#refactoring
 ANIMATION_PLAYER_IDLE_DOWN: Final[arcade.TextureAnimation] = PLAYER_IDLE_ANIMATIONS[
     Direction.SOUTH
 ]

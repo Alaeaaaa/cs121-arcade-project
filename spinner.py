@@ -12,6 +12,14 @@ class Spinner(Enemy):
     Spinner : se déplace en ligne droite (horizontal ou vertical),
     fait demi-tour en bout de course.
     """
+    logic_x:float
+    logic_y:float
+    horizontal:bool
+    direction:int
+    min_x:float
+    max_x:float
+    min_y:float
+    max_y:float
 
     def __init__(
         self,
@@ -25,20 +33,21 @@ class Spinner(Enemy):
     ) -> None:
         super().__init__(animation=ANIMATION_SPINNER, scale=SCALE)
 
-        # Position logique en pixels.
+        #position logique en pixels:
         self.logic_x = float(grid_to_pixels(x))
         self.logic_y = float(grid_to_pixels(y))
 
         self.horizontal = horizontal
         self.direction: int = 1  # +1 ou -1
 
-        # Limites en pixels.
+        # limites en pixels:
         self.min_x = float(grid_to_pixels(min_x))
         self.max_x = float(grid_to_pixels(max_x))
         self.min_y = float(grid_to_pixels(min_y))
         self.max_y = float(grid_to_pixels(max_y))
 
     def update_logic(self, **kwargs) -> None:
+        """on avance le spinner, et on inverse sa direction s'il atteint une limite"""
         if self.horizontal:
             self.logic_x += self.direction * SPINNER_MOVEMENT_SPEED
             if self.logic_x >= self.max_x or self.logic_x <= self.min_x:
@@ -55,11 +64,9 @@ class Spinner(Enemy):
         self.center_y = self.logic_y
 
 
-# --------------------------------------------------
-# Helpers module-privés
-# --------------------------------------------------
 
 def _is_blocking_cell(cell: GridCell) -> bool:
+    """c'est pour indiquer si une cellule bloque le trajet d'un spinner"""
     return cell == GridCell.BUSH
 
 
@@ -68,16 +75,13 @@ def _is_inside_map(game_map: Map, x: int, y: int) -> bool:
 
 
 def _scan_until_blocked(game_map: Map, x: int, y: int, dx: int, dy: int) -> tuple[int, int]:
+    """on avance dans une direction jusqu'à rencontrer un obstacle ou un bord"""
     nx, ny = x + dx, y + dy
     while _is_inside_map(game_map, nx, ny) and not _is_blocking_cell(game_map.get(nx, ny)):
         x, y = nx, ny
         nx, ny = x + dx, y + dy
     return x, y
 
-
-# --------------------------------------------------
-# Factories
-# --------------------------------------------------
 
 def create_spinner(game_map: Map, x: int, y: int) -> Spinner:
     cell = game_map.get(x, y)

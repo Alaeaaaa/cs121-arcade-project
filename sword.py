@@ -2,17 +2,18 @@ from enum import Enum, auto
 
 from direction import Direction
 from textures import ANIMATION_SWORD
-from weapon import Weapon  # Weapon est dans weapon.py, pas weapon_system.py
-
+from weapon import Weapon
 
 class SwordState(Enum):
+    """on aurait pu utiliser un booléen à la place, mais
+    comme ça au moins c'est bien illustré"""
     INACTIVE = auto()
     ACTIVE = auto()
 
 
 class Sword(Weapon):
 
-    def __init__(self):
+    def __init__(self)->None:
         super().__init__(
             animation=ANIMATION_SWORD[Direction.SOUTH],
             scale=2,
@@ -30,8 +31,10 @@ class Sword(Weapon):
         self.update_direction_animation()
 
     def deactivate(self) -> None:
+        #désactive l'épée, et remet donc le compteur à 0
         self.state = SwordState.INACTIVE
         self.time = 0.0
 
     def update_direction_animation(self) -> None:
+        #mise à jour de l'animation selon la direction
         self.animation = ANIMATION_SWORD[self.direction]

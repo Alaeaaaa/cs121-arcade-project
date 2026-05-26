@@ -14,9 +14,14 @@ if TYPE_CHECKING:
 
 
 class EnemySystem:
-    # Gère tous les ennemis : bats, slimes, spinners.
-    # Miroir de WeaponSystem.
-
+    """force de notre design, car gameview n'a plus à connaitre tous les détails des ennemis,
+    c'est cette classe qui s'occupe des mises a jour, des animations, et collisions"""
+    bats:list[Bat]
+    slimes:list[Slime]
+    spinners:list[Spinner]
+    bat_sprites:arcade.SpriteList
+    slime_sprites:arcade.SpriteList
+    spinner_sprites:arcade.SpriteList
     def __init__(
         self,
         bats: list[Bat],
@@ -44,7 +49,7 @@ class EnemySystem:
             self.spinner_sprites.append(spinner)
 
     # --------------------------------------------------
-    # Update principal — appelé chaque frame
+    # Update principal, appelé chaque frame par on_update
     # --------------------------------------------------
 
     def update(
@@ -54,6 +59,8 @@ class EnemySystem:
         player_position: Point,
         walls: arcade.SpriteList,
     ) -> None:
+        """autre point fort du design, chaque entité gère sa propre logique.
+        on appelle donc juste les bonnes méthodes en mettant à jour les sprites"""
         for bat in self.bats:
             bat.update_logic()
             bat.sync_sprite()
@@ -81,9 +88,11 @@ class EnemySystem:
 
     @property
     def all_sprites(self) -> list[arcade.SpriteList]:
+        #returne les spritelists de tous les ennemis
         return [self.bat_sprites, self.slime_sprites, self.spinner_sprites]
 
     def player_touches_enemy(self, player: arcade.Sprite) -> bool:
+        #indique si le joueur touch au moins un ennemi
         return any(
             arcade.check_for_collision_with_list(player, sprites)
             for sprites in self.all_sprites
@@ -97,6 +106,7 @@ class EnemySystem:
         return hit
 
     def _remove_hits(self, weapon: arcade.Sprite, sprite_list: arcade.SpriteList) -> bool:
+        #supprime les sprites en contact avec l'arme
         hit_sprites = arcade.check_for_collision_with_list(weapon, sprite_list)
         for sprite in hit_sprites:
             sprite.remove_from_sprite_lists()

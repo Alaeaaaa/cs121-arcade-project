@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Final, Any
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 import yaml
 
@@ -38,11 +38,11 @@ class InvalidMapFileException(Exception):
 # Formules logiques pour les portails
 # ==================================================
 
-class GateCondition(ABC):
+class GateCondition:
     @abstractmethod
-    def evaluate(self, switch_states: dict[str, bool]) -> bool: 
+    def evaluate(self, switch_states: dict[str, bool]) -> bool:
         ...
-        
+
 
 
 @dataclass(frozen=True)
@@ -91,11 +91,8 @@ class OrCondition(GateCondition):
 
 
 def parse_gate_condition(data: Any) -> GateCondition:
-    # Une condition de portail est un dictionnaire YAML avec exactement une clef.
-    # Exemples valides :
-    #   { switch_is_on: "s1" }
-    #   { not: [{ switch_is_on: "s1" }] }
-    #   { and: [{ switch_is_on: "s1" }, { switch_is_on: "s2" }] }
+    """ Une condition de portail est un dictionnaire YAML avec exactement une clef.
+    on accepte tout à l'entrée, mais on doit vérifier que c'est un dictionnaire"""
     if not isinstance(data, dict):
         raise InvalidMapFileException("Une condition de portail doit être un dictionnaire")
 
@@ -265,10 +262,11 @@ def map_from_file(path: str) -> Map:
 
 
 def split_map_file(text: str) -> tuple[str, list[str]]:
-    # Un fichier de map est divisé en trois parties par "---" :
-    #   1. La configuration YAML (width, height, switches, gates...)
-    #   2. La grille de caractères
-    #   3. (vide, juste pour terminer proprement le fichier)
+    """Un fichier de map est divisé en trois parties par "---" :
+     1. La configuration YAML (width, height, switches, gates...)
+     2. La grille de caractères
+     3. vide, juste pour terminer proprement le fichier
+     on doit donc tenir compe de tout ça : """
     parts = text.split("---")
 
     if len(parts) != 3:
@@ -289,12 +287,7 @@ def parse_config(config_text: str) -> dict[str, Any]:
     return data
 
 
-# Dictionnaire de conversion caractère → cellule.
-#
-# Avantage par rapport à une chaîne de if/elif :
-# pour ajouter un nouveau type de cellule, il suffit d'ajouter
-# une ligne ici, sans toucher à la logique de cell_from_char.
-
+# Dictionnaire de conversion caractère -> cellule.
 _CHAR_TO_CELL: dict[str, GridCell] = {
     " ": GridCell.GRASS,
     "x": GridCell.BUSH,
@@ -350,10 +343,10 @@ def validate_switches_and_gates(
 
 @dataclass
 class _GridParseResult:
-    
+
     #Résultat intermédiaire de la construction de la grille.
-    #On sépare la construction de la grille dans sa propre fonction pour que map_from_string reste lisible : 
-    # elle orchestre les étapes, _parse_grid s'occupe du détail ligne par ligne.
+    #On sépare la construction de la grille dans sa propre fonction pour que map_from_string reste lisible :
+    # elle gère les étapes, _parse_grid s'occupe du détail ligne par ligne.
 
     cells: list[list[GridCell]]
     player_x: int
@@ -361,10 +354,10 @@ class _GridParseResult:
 
 
 def _parse_grid(grid_lines: list[str], width: int, height: int) -> _GridParseResult:
-    
+
     #Construit la grille de cellules depuis les lignes de texte.
     #Cherche la position de départ du joueur ('P') au passage.
-    
+
     if len(grid_lines) != height:
         raise InvalidMapFileException("La hauteur de la map ne correspond pas")
 

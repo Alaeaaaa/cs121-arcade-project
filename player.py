@@ -17,7 +17,7 @@ from textures import (
 
 class Player(arcade.TextureAnimationSprite):
 
-    def __init__(self, animation, scale, center_x, center_y):
+    def __init__(self, animation:arcade.TextureAnimation, scale:int, center_x:int, center_y:int)->None:
 
         # Player hérite de TextureAnimationSprite.
         # Cela permet d'avoir directement une position, une animation,
@@ -57,18 +57,12 @@ class Player(arcade.TextureAnimationSprite):
         # S'il vaut 0, le joueur n'a pas de bouclier.
         self.shield_time = 0.0
 
-    def update_movement(self, right, left, up, down):
+    def update_movement(self, right:bool, left:bool, up:bool, down:bool)->None:
 
-        # Cette méthode reçoit des booléens, pas directement des touches Arcade.
-        # GameView transforme les touches en right/left/up/down.
-        # Ainsi, Player ne dépend pas de arcade.key.
-
-        # =========================
-        # Direction du joueur
-        # =========================
-        # On garde la dernière direction appuyée.
-        # Cette direction est utilisée pour l'animation
-        # et pour orienter l'épée ou le boomerang.
+        """ Cette méthode reçoit des booléens, pas directement des touches Arcade.
+        GameView transforme les touches en booléens. Ainsi, Player ne dépend pas directementt
+        de arcade.key. On garde la dernière direction appuyée, qui sera utilisée pour l'animation
+        et pour orienter l'épée ou le boomerang."""
         if down:
             self.direction = Direction.SOUTH
         elif up:
@@ -78,12 +72,8 @@ class Player(arcade.TextureAnimationSprite):
         elif right:
             self.direction = Direction.EAST
 
-        # =========================
-        # Vitesse horizontale
-        # =========================
-        # Droite seulement -> vitesse positive.
-        # Gauche seulement -> vitesse négative.
-        # Les deux ou aucune -> pas de mouvement horizontal.
+        """on passe ensuite à la vitesse horizontale : si l'une des touches et appuyée,
+        alors movement dans le sens voulu. mais si deux touche sont appuyées : immboile."""
         if right and not left:
             self.change_x = PLAYER_MOVEMENT_SPEED
         elif left and not right:
@@ -91,12 +81,7 @@ class Player(arcade.TextureAnimationSprite):
         else:
             self.change_x = 0
 
-        # =========================
-        # Vitesse verticale
-        # =========================
-        # Haut seulement -> vitesse positive.
-        # Bas seulement -> vitesse négative.
-        # Les deux ou aucune -> pas de mouvement vertical.
+        """même procédure que pour la vitesse horizontale"""
         if up and not down:
             self.change_y = PLAYER_MOVEMENT_SPEED
         elif down and not up:
@@ -104,9 +89,9 @@ class Player(arcade.TextureAnimationSprite):
         else:
             self.change_y = 0
 
-    def update_direction_animation(self):
+    def update_direction_animation(self)->None:
 
-        # Le joueur bouge si au moins une de ses vitesses est non nulle.
+        #le joueur bouge si au moins une de ses vitesses est non nulle.
         is_moving = self.change_x != 0 or self.change_y != 0
 
         # Refactoring :
@@ -119,18 +104,17 @@ class Player(arcade.TextureAnimationSprite):
 
     def is_invincible(self) -> bool:
 
-        # Le joueur est invincible tant que ce compteur est positif.
+        #le joueur est invincible tant que ce compteur est positif.
         return self.invincibility_time > 0
 
     def has_active_shield(self) -> bool:
 
-        # Le bouclier est actif tant que ce compteur est positif.
+        #le bouclier est actif tant que ce compteur est positif.
         return self.shield_time > 0
 
     def activate_shield(self) -> None:
 
-        # Quand le joueur ramasse un bouclier,
-        # il est protégé pendant SHIELD_DURATION secondes.
+        """quand le joueur ramasse un bouclier, il est invincible pendant shield_duration"""
         self.shield_time = SHIELD_DURATION
 
     def take_damage(self, amount: int = 1) -> bool:
@@ -147,8 +131,8 @@ class Player(arcade.TextureAnimationSprite):
             self.invincibility_time = PLAYER_INVINCIBILITY_DURATION
             return False
 
-        # On enlève amount vies.
-        # max(0, ...) évite d'avoir une vie négative.
+        #On enlève "amount" de vies.
+        # max évite d'avoir une vie négative.
         self.health = max(0, self.health - amount)
 
         # Après un dégât, le joueur devient invincible pendant un court moment.
@@ -165,8 +149,8 @@ class Player(arcade.TextureAnimationSprite):
 
         if self.invincibility_time > 0:
 
-            # On enlève le temps écoulé depuis la frame précédente.
-            # max(0, ...) évite que le compteur devienne négatif.
+            # On enlève le temps écoulé depuis la frame précédente grâce à delta time
+            #max évite que le compteur devienne négatif.
             self.invincibility_time = max(
                 0,
                 self.invincibility_time - delta_time,
@@ -174,7 +158,7 @@ class Player(arcade.TextureAnimationSprite):
 
             # Effet visuel de clignotement :
             # on alterne entre transparent et normal.
-            # Ce n'est pas obligatoire pour la logique,
+            # ce n'est pas obligatoire pour la logique,
             # mais ça aide à voir que le joueur est invincible.
             if int(self.invincibility_time * 10) % 2 == 0:
                 self.alpha = 120
@@ -184,7 +168,6 @@ class Player(arcade.TextureAnimationSprite):
         else:
             # Si le joueur n'est plus invincible,
             # on le rend complètement visible.
-            # alpha veut dire opacité / transparence.
             self.alpha = 255
 
     def update_shield(self, delta_time: float) -> None:

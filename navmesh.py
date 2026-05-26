@@ -10,22 +10,15 @@ from utils import grid_to_pixels
 
 
 # Un noeud du navmesh est une case de la grille.
-# Exemple : (4, 7)
-#
-# On choisit tuple[int, int] parce que :
-# - c'est simple
-# - c'est hashable
-# - NetworkX peut l'utiliser comme noeud
 Node = tuple[int, int]
 
 # Un point en pixels.
-# Exemple : (144.0, 240.0)
 Point = tuple[float, float]
 
 
 @dataclass
 class NavMesh:
-    # Le graphe contient les cases accessibles aux slimes.
+    # le graphe contient les cases accessibles aux slimes.
     graph: nx.Graph[Node]
 
 
@@ -47,12 +40,8 @@ def is_inside_map(game_map: Map, x: int, y: int) -> bool:
 
 
 def is_slime_obstacle(cell: GridCell) -> bool:
-    # Les slimes ne peuvent pas marcher sur :
-    # - les buissons
-    # - les trous
-    #
-    # Les trous ne bloqueront pas la vue plus tard,
-    # mais ils restent des obstacles pour le déplacement.
+    """les slimes ne peuvent pas marcher sur certains obstacles
+    c'est ce qu'on vérifie ici: """
     return cell in {
         GridCell.BUSH,
         GridCell.HOLE,
@@ -63,12 +52,14 @@ def is_slime_obstacle(cell: GridCell) -> bool:
 def can_slime_stand_on(game_map: Map, x: int, y: int) -> bool:
     # Une case devient un noeud du navmesh si le slime peut marcher dessus.
     if not is_inside_map(game_map, x, y):
+        #on vérifie si on est à l'intérieur de la map
         return False
+        #si on l'est, alors on vérifie si c'est un obstacle
     return not is_slime_obstacle(game_map.get(x, y))
 
 
 def add_navmesh_nodes(game_map: Map, graph: nx.Graph[Node]) -> None:
-    # On ajoute un noeud pour chaque case accessible.
+    #on ajoute un noeud pour chaque case accessible:
     for y in range(game_map.height):
         for x in range(game_map.width):
             if can_slime_stand_on(game_map, x, y):
@@ -76,12 +67,8 @@ def add_navmesh_nodes(game_map: Map, graph: nx.Graph[Node]) -> None:
 
 
 def neighbor_nodes(node: Node) -> list[Node]:
-    # On connecte chaque noeud avec ses voisins :
-    # - horizontaux
-    # - verticaux
-    # - diagonaux
-    #
-    # Donc au maximum 8 voisins.
+    """chaque noeud possède au plus 8 voisins, soit en verticale, horizontale ou diagonale
+    les coordonnées varient donc de +-1 ou 0"""
     x, y = node
     return [
         (x - 1, y - 1),
@@ -96,13 +83,8 @@ def neighbor_nodes(node: Node) -> list[Node]:
 
 
 def add_navmesh_edges(graph: nx.Graph[Node]) -> None:
-    # On ajoute les arêtes entre les noeuds voisins.
-    #
-    # Le poids est la vraie distance :
-    # - horizontal / vertical : TILE_SIZE
-    # - diagonale : sqrt(2) * TILE_SIZE
-    #
-    # C'est important pour que Dijkstra choisisse un vrai plus court chemin.
+    """on ajute les arêtes en tenan compte bien sur des poids de chacune d'elle,
+    pour cela on a bien défini notre fonction distance_between_points"""
     for node in graph.nodes:
         for neighbor in neighbor_nodes(node):
             if neighbor in graph:
@@ -114,7 +96,7 @@ def add_navmesh_edges(graph: nx.Graph[Node]) -> None:
 
 
 def create_navmesh(game_map: Map) -> NavMesh:
-    # Crée le graphe complet du navmesh.
+    """on crée le navmesh complet"""
     graph: nx.Graph[Node] = nx.Graph()
     add_navmesh_nodes(game_map, graph)
     add_navmesh_edges(graph)
@@ -122,11 +104,8 @@ def create_navmesh(game_map: Map) -> NavMesh:
 
 
 def nearest_node(navmesh: NavMesh, point: Point) -> Node:
-    # Trouve le noeud du navmesh le plus proche d'un point quelconque.
-    #
-    # Le slime et sa destination sont en pixels.
-    # Mais Dijkstra travaille sur des noeuds.
-    # Donc on rapproche chaque point du noeud le plus proche.
+    """cette fonction est essentielle à l'algorithme de dijkstra, car elle
+    retourne le noeud du navmesh le plus proche d'un point"""
     return min(
         navmesh.graph.nodes,
         key=lambda node: distance_between_points(point, node_position(node)),
@@ -134,13 +113,11 @@ def nearest_node(navmesh: NavMesh, point: Point) -> Node:
 
 
 def shortest_path(navmesh: NavMesh, source: Point, target: Point) -> list[Point]:
-    # Calcule un chemin entre deux points en pixels.
-    #
-    # Étapes :
-    # 1. source -> noeud le plus proche
-    # 2. target -> noeud le plus proche
-    # 3. Dijkstra entre ces deux noeuds
-    # 4. conversion des noeuds en points pixels
+    """ trouve le chemin le moins couteux en 4 étapes :
+    1. depuis la source, on trouve le noeud le plus proche
+    2. on trouve le noeud le plus proche de la destination
+    3. Dijkstra entre ces deux noeuds
+    4. conversion des noeuds en points pixels"""
 
     if len(navmesh.graph.nodes) == 0:
         return [target]

@@ -21,9 +21,9 @@ from map import GridCell, Map
 from player import Player
 from spinner import create_spinners
 from bat import create_bats
-from navmesh import create_navmesh
+from navmesh import create_navmesh, NavMesh
 from slime import create_slimes
-from switch import create_gates, create_switches, toggle_switch, update_gates
+from switch import create_gates, create_switches, toggle_switch, update_gates, Switch, Gate
 from utils import grid_to_pixels
 
 from enemy_system import EnemySystem
@@ -33,6 +33,37 @@ from world_renderer import WorldRenderer
 
 
 class GameView(arcade.View):
+    """sans grande surprise, c'est la vue principale du jeu en charge de tous les grands systèmes.
+    comme voulu par notre design et après plusieures refactorisations, la logique détaillée est finalement
+    déléguée aux classes conçues à cet effet"""
+    map:Map
+    score:int
+    random:random.Random
+    world_width:int
+    world_height:int
+    player:Player
+    player_list:arcade.SpriteList
+    grounds:arcade.SpriteList
+    walls:arcade.SpriteList
+    crystals:arcade.SpriteList
+    shields:arcade.SpriteList
+    holes:arcade.SpriteList
+    switches:list[Switch]
+    gates:list[Gate]
+    switch_sprites:arcade.SpriteList
+    gate_sprites:arcade.SpriteList
+    navmesh:NavMesh
+    enemies:EnemySystem
+    weapons:WeaponSystem
+    collisions:CollisionHandler
+    renderer:WorldRenderer
+    right:bool
+    left:bool
+    up:bool
+    down:bool
+    physics_engine:arcade.PhysicsEngineSimple
+    camera:arcade.camera.Camera2D
+    ui_camera:arcade.camera.Camera2D
     def __init__(self, game_map: Map) -> None:
         super().__init__()
 
@@ -62,6 +93,7 @@ class GameView(arcade.View):
     # ==================================================
 
     def _setup_player(self) -> None:
+        """on crée le joueur et sa spritelist"""
         self.player = Player(
             animation=ANIMATION_PLAYER_IDLE_DOWN,
             scale=SCALE,
@@ -72,6 +104,8 @@ class GameView(arcade.View):
         self.player_list.append(self.player)
 
     def _setup_world(self) -> None:
+        """on crée les spritelist et on parcourt la map. grâce à la méthode définie plus bas,
+        on crée le monde"""
         self.grounds = arcade.SpriteList(use_spatial_hash=True)
         self.walls = arcade.SpriteList(use_spatial_hash=True)
         self.crystals = arcade.SpriteList()
@@ -83,6 +117,7 @@ class GameView(arcade.View):
                 self._create_cell_sprites(x, y)
 
     def _setup_switches_and_gates(self) -> None:
+        """on crée les interrupteurs, portails et sprites associés"""
         self.switches = create_switches(self.map)
         self.gates = create_gates(self.map, self.switches)
         self.switch_sprites = arcade.SpriteList()
@@ -107,7 +142,8 @@ class GameView(arcade.View):
 
     def _setup_enemies(self) -> None:
         # Chaque ennemi connaît déjà sa propre animation (définie dans son __init__).
-        # Pas besoin de patcher quoi que ce soit ici.
+        # il suffit donc de créer les ennemies présents dans la map et de les regrouper
+        # dans un EnemySystem
         bats = create_bats(self.map, self.random)
         slimes = create_slimes(self.map, self.navmesh, self.random)
         spinners = create_spinners(self.map)
@@ -119,6 +155,7 @@ class GameView(arcade.View):
         )
 
     def _setup_systems(self) -> None:
+        """on crée les grands systèmes du jeu: armes, collisions et renderer qui dessine tout """
         self.weapons = WeaponSystem(self.player)
 
         self.collisions = CollisionHandler(
@@ -153,6 +190,7 @@ class GameView(arcade.View):
         )
 
     def _setup_keyboard(self) -> None:
+        #au début aucune touche n'est appuyée
         self.right = self.left = self.up = self.down = False
 
     # ==================================================
@@ -171,6 +209,9 @@ class GameView(arcade.View):
             self.renderer.draw_ui(self.score, self.weapons.active_weapon)
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
+        """autre force de notre design avec player, il suffit de mettre à jour les booléens.
+        on les donne ensuite à update_movement du player qui les lit et se charge de le mettre à jour.
+        switch_weapon et use wuant à elles nous évitent tout un bloc de code ici """
         match symbol:
             case arcade.key.RIGHT:  self.right = True
             case arcade.key.LEFT:   self.left = True
@@ -224,7 +265,8 @@ class GameView(arcade.View):
     # Switches et gates
     # ==================================================
 
-    def _sync_gate(self, switch, switch_sprite: arcade.Sprite) -> None:
+    def _sync_gate(self, switch:Switch, switch_sprite: arcade.Sprite) -> None:
+        """change l'état du switch et met à jour le portail"""
         toggle_switch(switch)
 
         if switch.is_on:
@@ -261,6 +303,7 @@ class GameView(arcade.View):
         self._respawn_player()
 
     def _respawn_player(self) -> None:
+        """on replace le joueur au point de départ après un dégât """
         self.player.center_x = grid_to_pixels(self.map.player_start_x)
         self.player.center_y = grid_to_pixels(self.map.player_start_y)
         self.player.change_x = 0
@@ -268,6 +311,8 @@ class GameView(arcade.View):
         self.weapons.reset()
 
     def _restart_game(self) -> None:
+        """redémarre la partie en créant une nouvelle vue à partir d'une
+        nouvelle instance de gameview"""
         self.window.show_view(GameView(self.map))
 
     # ==================================================
@@ -275,6 +320,7 @@ class GameView(arcade.View):
     # ==================================================
 
     def _create_cell_sprites(self, x: int, y: int) -> None:
+        """création des sprites à partir de la map"""
         self.grounds.append(arcade.Sprite(
             TEXTURE_GRASS, scale=SCALE,
             center_x=grid_to_pixels(x), center_y=grid_to_pixels(y),

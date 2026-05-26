@@ -120,43 +120,43 @@ def make_bat(
 
 class TestCellFromChar:
 
-    def test_space_gives_grass(self):
+    def test_space_gives_grass(self)->None:
         assert cell_from_char(" ", 0, 0) == GridCell.GRASS
 
-    def test_x_gives_bush(self):
+    def test_x_gives_bush(self)->None:
         assert cell_from_char("x", 0, 0) == GridCell.BUSH
 
-    def test_crystal(self):
+    def test_crystal(self)->None:
         assert cell_from_char("*", 0, 0) == GridCell.CRYSTAL
 
-    def test_hole(self):
+    def test_hole(self)->None:
         assert cell_from_char("O", 0, 0) == GridCell.HOLE
 
-    def test_spinner_horizontal(self):
+    def test_spinner_horizontal(self)->None:
         assert cell_from_char("s", 0, 0) == GridCell.SPINNER_HORIZONTAL
 
-    def test_spinner_vertical(self):
+    def test_spinner_vertical(self)->None:
         assert cell_from_char("S", 0, 0) == GridCell.SPINNER_VERTICAL
 
-    def test_bat(self):
+    def test_bat(self)->None:
         assert cell_from_char("v", 0, 0) == GridCell.BAT
 
-    def test_slime(self):
+    def test_slime(self)->None:
         assert cell_from_char("m", 0, 0) == GridCell.SLIME
 
-    def test_player_gives_grass(self):
+    def test_player_gives_grass(self)->None:
         assert cell_from_char("P", 0, 0) == GridCell.GRASS
 
-    def test_shield(self):
+    def test_shield(self)->None:
         assert cell_from_char("A", 0, 0) == GridCell.SHIELD
 
-    def test_switch_char(self):
+    def test_switch_char(self)->None:
         assert cell_from_char("^", 0, 0) == GridCell.SWITCH
 
-    def test_gate_char(self):
+    def test_gate_char(self)->None:
         assert cell_from_char("|", 0, 0) == GridCell.GATE
 
-    def test_unknown_char_raises(self):
+    def test_unknown_char_raises(self)->None:
         with pytest.raises(InvalidMapFileException):
             cell_from_char("Z", 0, 0)
 
@@ -167,56 +167,56 @@ class TestCellFromChar:
 
 class TestMapFromString:
 
-    def test_basic_map_loads(self):
+    def test_basic_map_loads(self)->None:
         game_map = make_map("P  ", 3, 1)
         assert game_map.width == 3
         assert game_map.height == 1
 
-    def test_player_start_position(self):
+    def test_player_start_position(self)->None:
         game_map = make_map(" P ", 3, 1)
         assert game_map.player_start_x == 1
         assert game_map.player_start_y == 0
 
-    def test_player_start_bottom_left(self):
+    def test_player_start_bottom_left(self)->None:
         game_map = make_map("P  \n   \n   ", 3, 3)
         assert game_map.player_start_x == 0
         assert game_map.player_start_y == 0
 
-    def test_missing_player_raises(self):
+    def test_missing_player_raises(self)->None:
         with pytest.raises(InvalidMapFileException):
             make_map("   ", 3, 1)
 
-    def test_duplicate_player_raises(self):
+    def test_duplicate_player_raises(self)->None:
         with pytest.raises(InvalidMapFileException):
             make_map("PPP", 3, 1)
 
-    def test_wrong_width_raises(self):
+    def test_wrong_width_raises(self)->None:
         with pytest.raises(InvalidMapFileException):
             make_map("P  ", 5, 1)
 
-    def test_wrong_height_raises(self):
+    def test_wrong_height_raises(self)->None:
         with pytest.raises(InvalidMapFileException):
             make_map("P  ", 3, 3)
 
-    def test_missing_separator_raises(self):
+    def test_missing_separator_raises(self)->None:
         with pytest.raises(InvalidMapFileException):
             map_from_string("width: 3\nheight: 1\nP  ")
 
-    def test_cell_types_are_correct(self):
+    def test_cell_types_are_correct(self)->None:
         game_map = make_map("P x*", 4, 1)
         assert game_map.get(0, 0) == GridCell.GRASS
         assert game_map.get(1, 0) == GridCell.GRASS
         assert game_map.get(2, 0) == GridCell.BUSH
         assert game_map.get(3, 0) == GridCell.CRYSTAL
 
-    def test_map_get_out_of_bounds_raises(self):
+    def test_map_get_out_of_bounds_raises(self)->None:
         game_map = make_map("P  ", 3, 1)
         with pytest.raises(ValueError):
             game_map.get(-1, 0)
         with pytest.raises(ValueError):
             game_map.get(3, 0)
 
-    def test_map_get_negative_y_raises(self):
+    def test_map_get_negative_y_raises(self)->None:
         game_map = make_map("P  ", 3, 1)
         with pytest.raises(ValueError):
             game_map.get(0, -1)
@@ -228,39 +228,39 @@ class TestMapFromString:
 
 class TestGateConditions:
 
-    def test_switch_is_on_true(self):
+    def test_switch_is_on_true(self)->None:
         assert SwitchIsOn("s1").evaluate({"s1": True}) is True
 
-    def test_switch_is_on_false(self):
+    def test_switch_is_on_false(self)->None:
         assert SwitchIsOn("s1").evaluate({"s1": False}) is False
 
-    def test_switch_is_on_unknown_raises(self):
+    def test_switch_is_on_unknown_raises(self)->None:
         with pytest.raises(InvalidMapFileException):
             SwitchIsOn("unknown").evaluate({"s1": True})
 
-    def test_not_true_gives_false(self):
+    def test_not_true_gives_false(self)->None:
         assert NotCondition(SwitchIsOn("s1")).evaluate({"s1": True}) is False
 
-    def test_not_false_gives_true(self):
+    def test_not_false_gives_true(self)->None:
         assert NotCondition(SwitchIsOn("s1")).evaluate({"s1": False}) is True
 
-    def test_and_both_true(self):
+    def test_and_both_true(self)->None:
         cond = AndCondition(SwitchIsOn("s1"), SwitchIsOn("s2"))
         assert cond.evaluate({"s1": True, "s2": True}) is True
 
-    def test_and_one_false(self):
+    def test_and_one_false(self)->None:
         cond = AndCondition(SwitchIsOn("s1"), SwitchIsOn("s2"))
         assert cond.evaluate({"s1": True, "s2": False}) is False
 
-    def test_or_one_true(self):
+    def test_or_one_true(self)->None:
         cond = OrCondition(SwitchIsOn("s1"), SwitchIsOn("s2"))
         assert cond.evaluate({"s1": False, "s2": True}) is True
 
-    def test_or_both_false(self):
+    def test_or_both_false(self)->None:
         cond = OrCondition(SwitchIsOn("s1"), SwitchIsOn("s2"))
         assert cond.evaluate({"s1": False, "s2": False}) is False
 
-    def test_nested_conditions(self):
+    def test_nested_conditions(self)->None:
         # (s1 AND s2) OR (NOT s3)
         cond = OrCondition(
             AndCondition(SwitchIsOn("s1"), SwitchIsOn("s2")),
@@ -277,33 +277,33 @@ class TestGateConditions:
 
 class TestSwitch:
 
-    def _sw(self, is_on=False) -> Switch:
+    def _sw(self, is_on:bool =False) -> Switch:
         return Switch("s1", 0, 0, is_on=is_on, is_being_hit=False)
 
-    def test_toggle_off_to_on(self):
+    def test_toggle_off_to_on(self)->None:
         s = self._sw(is_on=False)
         toggle_switch(s)
         assert s.is_on is True
 
-    def test_toggle_on_to_off(self):
+    def test_toggle_on_to_off(self)->None:
         s = self._sw(is_on=True)
         toggle_switch(s)
         assert s.is_on is False
 
-    def test_toggle_twice_returns_to_original(self):
+    def test_toggle_twice_returns_to_original(self)->None:
         s = self._sw(is_on=True)
         toggle_switch(s)
         toggle_switch(s)
         assert s.is_on is True
 
-    def test_switch_states_reflects_all(self):
+    def test_switch_states_reflects_all(self)->None:
         switches = [
             Switch("s1", 0, 0, is_on=True,  is_being_hit=False),
             Switch("s2", 1, 0, is_on=False, is_being_hit=False),
         ]
         assert switch_states(switches) == {"s1": True, "s2": False}
 
-    def test_switch_states_empty_list(self):
+    def test_switch_states_empty_list(self)->None:
         assert switch_states([]) == {}
 
 
@@ -312,19 +312,19 @@ class TestGate:
     def _gate(self, is_open: bool) -> Gate:
         return Gate(x=0, y=0, open_if=SwitchIsOn("s1"), is_open=is_open)
 
-    def test_gate_opens_when_switch_on(self):
+    def test_gate_opens_when_switch_on(self)->None:
         switches = [Switch("s1", 0, 0, is_on=True, is_being_hit=False)]
         gates = [self._gate(is_open=False)]
         update_gates(switches, gates)
         assert gates[0].is_open is True
 
-    def test_gate_closes_when_switch_off(self):
+    def test_gate_closes_when_switch_off(self)->None:
         switches = [Switch("s1", 0, 0, is_on=False, is_being_hit=False)]
         gates = [self._gate(is_open=True)]
         update_gates(switches, gates)
         assert gates[0].is_open is False
 
-    def test_toggle_then_update_opens_gate(self):
+    def test_toggle_then_update_opens_gate(self)->None:
         """Scénario complet : on touche le switch, la gate s'ouvre."""
         switch = Switch("s1", 0, 0, is_on=False, is_being_hit=False)
         gate = self._gate(is_open=False)
@@ -332,7 +332,7 @@ class TestGate:
         update_gates([switch], [gate])
         assert gate.is_open is True
 
-    def test_multiple_gates_updated_independently(self):
+    def test_multiple_gates_updated_independently(self)->None:
         s1 = Switch("s1", 0, 0, is_on=True,  is_being_hit=False)
         s2 = Switch("s2", 1, 0, is_on=False, is_being_hit=False)
         g1 = Gate(x=0, y=1, open_if=SwitchIsOn("s1"), is_open=False)
@@ -352,45 +352,45 @@ class TestPlayer:
     On instancie Player.__new__ pour court-circuiter arcade.TextureAnimationSprite.
     """
 
-    def test_take_damage_reduces_health_by_one(self):
+    def test_take_damage_reduces_health_by_one(self)->None:
         p = make_player()
         initial = p.health
         result = p.take_damage()
         assert result is True
         assert p.health == initial - 1
 
-    def test_take_damage_returns_false_when_invincible(self):
+    def test_take_damage_returns_false_when_invincible(self)->None:
         p = make_player()
         p.invincibility_time = 1.0
         result = p.take_damage()
         assert result is False
         assert p.health == PLAYER_MAX_HEALTH  # aucune vie perdue
 
-    def test_shield_absorbs_damage_no_health_lost(self):
+    def test_shield_absorbs_damage_no_health_lost(self)->None:
         p = make_player()
         p.shield_time = SHIELD_DURATION
         result = p.take_damage()
         assert result is False
         assert p.health == PLAYER_MAX_HEALTH
 
-    def test_shield_consumed_after_hit(self):
+    def test_shield_consumed_after_hit(self)->None:
         p = make_player()
         p.shield_time = SHIELD_DURATION
         p.take_damage()
         assert p.shield_time == 0.0
 
-    def test_shield_grants_invincibility_after_absorb(self):
+    def test_shield_grants_invincibility_after_absorb(self)->None:
         p = make_player()
         p.shield_time = SHIELD_DURATION
         p.take_damage()
         assert p.invincibility_time == PLAYER_INVINCIBILITY_DURATION
 
-    def test_damage_sets_invincibility(self):
+    def test_damage_sets_invincibility(self)->None:
         p = make_player()
         p.take_damage()
         assert p.invincibility_time == PLAYER_INVINCIBILITY_DURATION
 
-    def test_health_cannot_go_below_zero(self):
+    def test_health_cannot_go_below_zero(self)->None:
         p = make_player()
         p.health = 1
         p.take_damage()
@@ -399,52 +399,52 @@ class TestPlayer:
         p.take_damage()
         assert p.health == 0
 
-    def test_activate_shield_sets_shield_time(self):
+    def test_activate_shield_sets_shield_time(self)->None:
         p = make_player()
         p.activate_shield()
         assert p.shield_time == SHIELD_DURATION
         assert p.has_active_shield() is True
 
-    def test_is_invincible_false_at_start(self):
+    def test_is_invincible_false_at_start(self)->None:
         p = make_player()
         assert p.is_invincible() is False
 
-    def test_update_invincibility_decreases_over_time(self):
+    def test_update_invincibility_decreases_over_time(self)->None:
         p = make_player()
         p.invincibility_time = 1.0
         p.update_invincibility(0.3)
         assert abs(p.invincibility_time - 0.7) < 1e-9
 
-    def test_update_invincibility_does_not_go_negative(self):
+    def test_update_invincibility_does_not_go_negative(self)->None:
         p = make_player()
         p.invincibility_time = 0.1
         p.update_invincibility(999.0)
         assert p.invincibility_time == 0.0
 
-    def test_update_shield_decreases_over_time(self):
+    def test_update_shield_decreases_over_time(self)->None:
         p = make_player()
         p.shield_time = 3.0
         p.update_shield(1.0)
         assert abs(p.shield_time - 2.0) < 1e-9
 
-    def test_update_shield_does_not_go_negative(self):
+    def test_update_shield_does_not_go_negative(self)->None:
         p = make_player()
         p.shield_time = 0.5
         p.update_shield(999.0)
         assert p.shield_time == 0.0
 
-    def test_movement_right(self):
+    def test_movement_right(self)->None:
         p = make_player()
         p.update_movement(right=True, left=False, up=False, down=False)
         assert p.change_x > 0
         assert p.change_y == 0
 
-    def test_movement_opposite_keys_cancel(self):
+    def test_movement_opposite_keys_cancel(self)->None:
         p = make_player()
         p.update_movement(right=True, left=True, up=False, down=False)
         assert p.change_x == 0
 
-    def test_direction_updates_on_movement(self):
+    def test_direction_updates_on_movement(self)->None:
         p = make_player()
         p.update_movement(right=False, left=False, up=True, down=False)
         assert p.direction == Direction.NORTH
@@ -459,38 +459,38 @@ class TestNavmesh:
     def _map3x3(self) -> Map:
         return make_map("   \n P \n   ", 3, 3)
 
-    def test_navmesh_creates_nodes_for_all_grass(self):
+    def test_navmesh_creates_nodes_for_all_grass(self)->None:
         from navmesh import create_navmesh
         navmesh = create_navmesh(self._map3x3())
         assert len(navmesh.graph.nodes) == 9
 
-    def test_navmesh_bush_excluded(self):
+    def test_navmesh_bush_excluded(self)->None:
         from navmesh import create_navmesh
         game_map = make_map("PxP", 3, 1)
         navmesh = create_navmesh(game_map)
         assert (1, 0) not in navmesh.graph.nodes
 
-    def test_navmesh_hole_excluded(self):
+    def test_navmesh_hole_excluded(self)->None:
         from navmesh import create_navmesh
         game_map = make_map("POP", 3, 1)
         navmesh = create_navmesh(game_map)
         assert (1, 0) not in navmesh.graph.nodes
 
-    def test_shortest_path_finds_route(self):
+    def test_shortest_path_finds_route(self)->None:
         from navmesh import create_navmesh, shortest_path
         navmesh = create_navmesh(self._map3x3())
         path = shortest_path(navmesh, (grid_to_pixels(0), grid_to_pixels(0)),
                                       (grid_to_pixels(2), grid_to_pixels(2)))
         assert len(path) > 0
 
-    def test_shortest_path_same_source_and_target(self):
+    def test_shortest_path_same_source_and_target(self)->None:
         from navmesh import create_navmesh, shortest_path
         navmesh = create_navmesh(self._map3x3())
         pt = (grid_to_pixels(1), grid_to_pixels(1))
         path = shortest_path(navmesh, pt, pt)
         assert len(path) >= 1
 
-    def test_shortest_path_empty_graph_returns_target(self):
+    def test_shortest_path_empty_graph_returns_target(self)->None:
         from navmesh import NavMesh, shortest_path
         import networkx as nx
         navmesh = NavMesh(graph=nx.Graph())
@@ -498,13 +498,13 @@ class TestNavmesh:
         path = shortest_path(navmesh, (0.0, 0.0), target)
         assert path == [target]
 
-    def test_navmesh_edges_connect_neighbours(self):
+    def test_navmesh_edges_connect_neighbours(self)->None:
         from navmesh import create_navmesh
         navmesh = create_navmesh(self._map3x3())
         # (0,0) et (1,0) doivent être connectés
         assert navmesh.graph.has_edge((0, 0), (1, 0))
 
-    def test_diagonal_edges_exist(self):
+    def test_diagonal_edges_exist(self)->None:
         from navmesh import create_navmesh
         navmesh = create_navmesh(self._map3x3())
         assert navmesh.graph.has_edge((0, 0), (1, 1))
@@ -516,40 +516,40 @@ class TestNavmesh:
 
 class TestUtils:
 
-    def test_grid_to_pixels_zero_is_half_tile(self):
+    def test_grid_to_pixels_zero_is_half_tile(self)->None:
         assert grid_to_pixels(0) == TILE_SIZE // 2
 
-    def test_grid_to_pixels_is_strictly_increasing(self):
+    def test_grid_to_pixels_is_strictly_increasing(self)->None:
         assert grid_to_pixels(1) > grid_to_pixels(0)
         assert grid_to_pixels(2) > grid_to_pixels(1)
 
-    def test_grid_to_pixels_step_is_tile_size(self):
+    def test_grid_to_pixels_step_is_tile_size(self)->None:
         assert grid_to_pixels(1) - grid_to_pixels(0) == TILE_SIZE
 
-    def test_grid_to_pixels_negative_index(self):
+    def test_grid_to_pixels_negative_index(self)->None:
         assert grid_to_pixels(-1) < grid_to_pixels(0)
 
-    def test_find_cells_returns_correct_position(self):
+    def test_find_cells_returns_correct_position(self)->None:
         game_map = make_map("P*x", 3, 1)
         crystals = find_cells(game_map, GridCell.CRYSTAL)
         assert (1, 0) in crystals
 
-    def test_find_cells_returns_only_matching_type(self):
+    def test_find_cells_returns_only_matching_type(self)->None:
         game_map = make_map("P*x", 3, 1)
         crystals = find_cells(game_map, GridCell.CRYSTAL)
         assert len(crystals) == 1
 
-    def test_find_cells_empty_when_none_present(self):
+    def test_find_cells_empty_when_none_present(self)->None:
         game_map = make_map("P  ", 3, 1)
         assert find_cells(game_map, GridCell.CRYSTAL) == []
 
-    def test_find_cells_multiple_occurrences(self):
+    def test_find_cells_multiple_occurrences(self)->None:
         game_map = make_map("P***", 4, 1)
         crystals = find_cells(game_map, GridCell.CRYSTAL)
         assert len(crystals) == 3
         assert (1, 0) in crystals and (2, 0) in crystals and (3, 0) in crystals
 
-    def test_find_cells_multiple_rows(self):
+    def test_find_cells_multiple_rows(self)->None:
         game_map = make_map("P  \n * \n   ", 3, 3)
         crystals = find_cells(game_map, GridCell.CRYSTAL)
         assert (1, 1) in crystals and len(crystals) == 1
@@ -561,50 +561,50 @@ class TestUtils:
 
 class TestSpinner:
 
-    def test_moves_right_when_direction_positive(self):
+    def test_moves_right_when_direction_positive(self)->None:
         s = make_spinner(x=5, horizontal=True, min_x=3, max_x=7)
         initial_x = s.logic_x
         s.update_logic()
         assert s.logic_x > initial_x
 
-    def test_reverses_at_max_x(self):
+    def test_reverses_at_max_x(self)->None:
         s = make_spinner(horizontal=True, min_x=3, max_x=5)
         s.logic_x = s.max_x  # déjà au bord
         s.update_logic()
         assert s.direction == -1
 
-    def test_reverses_at_min_x(self):
+    def test_reverses_at_min_x(self)->None:
         s = make_spinner(horizontal=True, min_x=5, max_x=7)
         s.logic_x = s.min_x
         s.direction = -1
         s.update_logic()
         assert s.direction == 1
 
-    def test_vertical_moves_up_when_direction_positive(self):
+    def test_vertical_moves_up_when_direction_positive(self)->None:
         s = make_spinner(x=5, y=5, horizontal=False, min_x=5, max_x=5, min_y=3, max_y=7)
         initial_y = s.logic_y
         s.update_logic()
         assert s.logic_y > initial_y
 
-    def test_stays_within_bounds_after_overshoot(self):
+    def test_stays_within_bounds_after_overshoot(self)->None:
         s = make_spinner(horizontal=True, min_x=3, max_x=5)
         s.logic_x = s.max_x + 1  # dépasse volontairement
         s.update_logic()
         assert s.logic_x <= s.max_x
 
-    def test_is_blocking_cell_bush(self):
+    def test_is_blocking_cell_bush(self)->None:
         assert _is_blocking_cell(GridCell.BUSH) is True
 
-    def test_is_blocking_cell_grass_not_blocking(self):
+    def test_is_blocking_cell_grass_not_blocking(self)->None:
         assert _is_blocking_cell(GridCell.GRASS) is False
 
-    def test_scan_until_blocked_stops_at_wall(self):
+    def test_scan_until_blocked_stops_at_wall(self)->None:
         game_map = make_map("PxS", 3, 1)
         # scan vers la droite depuis (0,0) : s'arrête avant x=1 (bush)
         result_x, result_y = _scan_until_blocked(game_map, 0, 0, dx=1, dy=0)
         assert result_x == 0  # ne passe pas le buisson
 
-    def test_create_spinners_horizontal_finds_bounds(self):
+    def test_create_spinners_horizontal_finds_bounds(self)->None:
         game_map = make_map("Ps ", 3, 1)
         spinners = create_spinners(game_map)
         assert len(spinners) == 1
@@ -617,42 +617,42 @@ class TestSpinner:
 
 class TestBat:
 
-    def test_bat_moves_each_frame(self):
+    def test_bat_moves_each_frame(self)->None:
         b = make_bat(start_x=100.0, start_y=100.0, dx=2.0, dy=3.0)
         b.update_logic()
         assert b.logic_x == 102.0
         assert b.logic_y == 103.0
 
-    def test_bat_bounces_at_max_x(self):
+    def test_bat_bounces_at_max_x(self)->None:
         b = make_bat(start_x=198.0, dx=5.0, max_x=200)
         b.update_logic()
         assert b.dx < 0  # direction inversée
 
-    def test_bat_bounces_at_min_x(self):
+    def test_bat_bounces_at_min_x(self)->None:
         b = make_bat(start_x=52.0, dx=-5.0, min_x=50)
         b.update_logic()
         assert b.dx > 0
 
-    def test_bat_bounces_at_max_y(self):
+    def test_bat_bounces_at_max_y(self)->None:
         b = make_bat(start_y=198.0, dy=5.0, max_y=200)
         b.update_logic()
         assert b.dy < 0
 
-    def test_bat_clamped_within_bounds_after_bounce(self):
+    def test_bat_clamped_within_bounds_after_bounce(self)->None:
         b = make_bat(start_x=199.0, dx=5.0, min_x=50, max_x=200)
         b.update_logic()
         assert b.logic_x <= b.max_x
 
-    def test_clamp_below_min(self):
+    def test_clamp_below_min(self)->None:
         assert _clamp(3, 5, 10) == 5
 
-    def test_clamp_above_max(self):
+    def test_clamp_above_max(self)->None:
         assert _clamp(15, 5, 10) == 10
 
-    def test_clamp_within_range(self):
+    def test_clamp_within_range(self)->None:
         assert _clamp(7, 5, 10) == 7
 
-    def test_compute_bat_bounds_within_map(self):
+    def test_compute_bat_bounds_within_map(self)->None:
         game_map = make_map("P" + " " * 9, 10, 1)
         min_x, max_x, min_y, max_y = _compute_bat_bounds(game_map, 5, 0)
         assert min_x < max_x
@@ -690,69 +690,69 @@ class TestSlime:
 
     # --- _is_slime_obstacle ---
 
-    def test_bush_is_obstacle(self):
+    def test_bush_is_obstacle(self)->None:
         assert _is_slime_obstacle(GridCell.BUSH) is True
 
-    def test_hole_is_obstacle(self):
+    def test_hole_is_obstacle(self)->None:
         assert _is_slime_obstacle(GridCell.HOLE) is True
 
-    def test_grass_is_not_obstacle(self):
+    def test_grass_is_not_obstacle(self)->None:
         assert _is_slime_obstacle(GridCell.GRASS) is False
 
-    def test_crystal_is_not_obstacle(self):
+    def test_crystal_is_not_obstacle(self)->None:
         assert _is_slime_obstacle(GridCell.CRYSTAL) is False
 
     # --- _can_stand_on ---
 
-    def test_can_stand_on_grass(self):
+    def test_can_stand_on_grass(self)->None:
         game_map = make_map("P  ", 3, 1)
         assert _can_stand_on(game_map, 1, 0) is True
 
-    def test_cannot_stand_on_bush(self):
+    def test_cannot_stand_on_bush(self)->None:
         game_map = make_map("Px ", 3, 1)
         assert _can_stand_on(game_map, 1, 0) is False
 
-    def test_cannot_stand_outside_map(self):
+    def test_cannot_stand_outside_map(self)->None:
         game_map = make_map("P  ", 3, 1)
         assert _can_stand_on(game_map, -1, 0) is False
         assert _can_stand_on(game_map, 3, 0) is False
 
     # --- _patrol_destinations ---
 
-    def test_patrol_destinations_excludes_walls(self):
+    def test_patrol_destinations_excludes_walls(self)->None:
         # Map 3x3, slime au centre (1,1), buisson en (0,0)
         game_map = make_map("x  \n P \n   ", 3, 3)
         dests = _patrol_destinations(game_map, 1, 1)
         assert (0, 0) not in dests
 
-    def test_patrol_destinations_excludes_out_of_bounds(self):
+    def test_patrol_destinations_excludes_out_of_bounds(self)->None:
         # Slime dans un coin : les destinations hors map ne doivent pas apparaître
         game_map = make_map("P  \n   \n   ", 3, 3)
         dests = _patrol_destinations(game_map, 0, 0)
         assert all(0 <= x < 3 and 0 <= y < 3 for x, y in dests)
 
-    def test_patrol_destinations_includes_start(self):
+    def test_patrol_destinations_includes_start(self)->None:
         game_map = make_map("P  \n   \n   ", 3, 3)
         dests = _patrol_destinations(game_map, 1, 1)
         assert (1, 1) in dests
 
     # --- _move_directly_to ---
 
-    def test_move_directly_advances_toward_target(self):
+    def test_move_directly_advances_toward_target(self)->None:
         s = make_slime(lx=0.0, ly=0.0)
         target = (100.0, 0.0)
         s._move_directly_to(target)
         assert s.logic_x > 0.0
         assert s.logic_y == 0.0
 
-    def test_move_directly_does_not_overshoot(self):
+    def test_move_directly_does_not_overshoot(self)->None:
         """Un slime à epsilon du but ne doit pas bouger."""
         s = make_slime(lx=0.0, ly=0.0)
         target = (DESTINATION_EPSILON / 2, 0.0)
         s._move_directly_to(target)
         assert s.logic_x == 0.0  # trop proche → ne bouge pas
 
-    def test_move_directly_diagonal(self):
+    def test_move_directly_diagonal(self)->None:
         s = make_slime(lx=0.0, ly=0.0)
         target = (100.0, 100.0)
         s._move_directly_to(target)
@@ -762,23 +762,23 @@ class TestSlime:
 
     # --- _has_reached_destination ---
 
-    def test_has_reached_destination_true(self):
+    def test_has_reached_destination_true(self)->None:
         s = make_slime(lx=100.0, ly=100.0, dest_x=100.0, dest_y=100.0)
         assert s._has_reached_destination() is True
 
-    def test_has_reached_destination_false(self):
+    def test_has_reached_destination_false(self)->None:
         s = make_slime(lx=0.0, ly=0.0, dest_x=500.0, dest_y=0.0)
         assert s._has_reached_destination() is False
 
     # --- _can_see_player ---
 
-    def test_cannot_see_player_too_far(self):
+    def test_cannot_see_player_too_far(self)->None:
         s = make_slime(lx=0.0, ly=0.0)
         far_player = (MAX_VIEW_DISTANCE + 999.0, 0.0)
         walls = MagicMock()
         assert s._can_see_player(far_player, walls) is False
 
-    def test_can_see_player_when_close_and_los(self):
+    def test_can_see_player_when_close_and_los(self)->None:
         s = make_slime(lx=0.0, ly=0.0)
         close_player = (50.0, 0.0)
         walls = MagicMock()
@@ -787,14 +787,14 @@ class TestSlime:
 
     # --- _follow_current_path ---
 
-    def test_follow_path_advances_toward_first_waypoint(self):
+    def test_follow_path_advances_toward_first_waypoint(self)->None:
         s = make_slime(lx=0.0, ly=0.0)
         s.current_path = [(200.0, 0.0)]
         s.current_path_index = 0
         s._follow_current_path()
         assert s.logic_x > 0.0
 
-    def test_follow_path_advances_index_when_waypoint_reached(self):
+    def test_follow_path_advances_index_when_waypoint_reached(self)->None:
         s = make_slime(lx=0.0, ly=0.0)
         # Premier waypoint au même endroit → doit passer au suivant
         s.current_path = [(0.0, 0.0), (200.0, 0.0)]
@@ -802,7 +802,7 @@ class TestSlime:
         s._follow_current_path()
         assert s.current_path_index == 1
 
-    def test_follow_empty_path_does_nothing(self):
+    def test_follow_empty_path_does_nothing(self)->None:
         s = make_slime(lx=50.0, ly=50.0)
         s.current_path = []
         s._follow_current_path()
@@ -829,50 +829,50 @@ def make_boomerang() -> Boomerang:
 
 class TestBoomerang:
 
-    def test_initial_state_is_inactive(self):
+    def test_initial_state_is_inactive(self)->None:
         b = make_boomerang()
         assert b.state == BoomerangState.INACTIVE
         assert b.is_active() is False
 
-    def test_launch_sets_launching_state(self):
+    def test_launch_sets_launching_state(self)->None:
         b = make_boomerang()
         b.launch(Direction.EAST, 100.0, 200.0)
         assert b.state == BoomerangState.LAUNCHING
         assert b.is_active() is True
 
-    def test_launch_sets_position(self):
+    def test_launch_sets_position(self)->None:
         b = make_boomerang()
         b.launch(Direction.NORTH, 50.0, 75.0)
         assert b.center_x == 50.0
         assert b.center_y == 75.0
 
-    def test_launch_resets_distance(self):
+    def test_launch_resets_distance(self)->None:
         b = make_boomerang()
         b.distance_travelled = 999.0
         b.launch(Direction.WEST, 0.0, 0.0)
         assert b.distance_travelled == 0.0
 
-    def test_return_to_player_sets_returning_state(self):
+    def test_return_to_player_sets_returning_state(self)->None:
         b = make_boomerang()
         b.launch(Direction.EAST, 0.0, 0.0)
         b.return_to_player()
         assert b.state == BoomerangState.RETURNING
         assert b.is_active() is True
 
-    def test_deactivate_sets_inactive(self):
+    def test_deactivate_sets_inactive(self)->None:
         b = make_boomerang()
         b.launch(Direction.EAST, 0.0, 0.0)
         b.deactivate()
         assert b.state == BoomerangState.INACTIVE
         assert b.is_active() is False
 
-    def test_deactivate_resets_distance(self):
+    def test_deactivate_resets_distance(self)->None:
         b = make_boomerang()
         b.distance_travelled = 500.0
         b.deactivate()
         assert b.distance_travelled == 0.0
 
-    def test_full_lifecycle(self):
+    def test_full_lifecycle(self)->None:
         """INACTIVE → LAUNCHING → RETURNING → INACTIVE."""
         b = make_boomerang()
         assert b.state == BoomerangState.INACTIVE
@@ -902,42 +902,42 @@ def make_sword() -> Sword:
 
 class TestSword:
 
-    def test_initial_state_is_inactive(self):
+    def test_initial_state_is_inactive(self)->None:
         s = make_sword()
         assert s.state == SwordState.INACTIVE
         assert s.is_active() is False
 
-    def test_activate_sets_active_state(self):
+    def test_activate_sets_active_state(self)->None:
         s = make_sword()
         s.activate(Direction.NORTH)
         assert s.state == SwordState.ACTIVE
         assert s.is_active() is True
 
-    def test_activate_sets_direction(self):
+    def test_activate_sets_direction(self)->None:
         s = make_sword()
         s.activate(Direction.WEST)
         assert s.direction == Direction.WEST
 
-    def test_activate_resets_time(self):
+    def test_activate_resets_time(self)->None:
         s = make_sword()
         s.time = 9.9
         s.activate(Direction.EAST)
         assert s.time == 0.0
 
-    def test_deactivate_sets_inactive(self):
+    def test_deactivate_sets_inactive(self)->None:
         s = make_sword()
         s.activate(Direction.SOUTH)
         s.deactivate()
         assert s.state == SwordState.INACTIVE
         assert s.is_active() is False
 
-    def test_deactivate_resets_time(self):
+    def test_deactivate_resets_time(self)->None:
         s = make_sword()
         s.time = 0.2
         s.deactivate()
         assert s.time == 0.0
 
-    def test_activate_each_direction(self):
+    def test_activate_each_direction(self)->None:
         """L'épée peut être activée dans chacune des 4 directions."""
         for direction in Direction:
             s = make_sword()
@@ -945,7 +945,7 @@ class TestSword:
             assert s.direction == direction
             assert s.is_active() is True
 
-    def test_full_lifecycle(self):
+    def test_full_lifecycle(self)->None:
         """INACTIVE → ACTIVE → INACTIVE."""
         s = make_sword()
         assert not s.is_active()

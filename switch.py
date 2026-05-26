@@ -12,9 +12,8 @@ class Switch:
     y: int
     is_on: bool
 
-    # Sert à éviter qu'une arme toggle le switch 60 fois par seconde.
-    # Mis à True dès que l'arme touche le switch, remis à False quand elle s'éloigne.
-    # Le toggle n'a lieu que sur le front montant (False -> True).
+    """sert à éviter qu'une arme toggle le switch trop de fois par seconde.
+    mis à true dès que l'arme touche le switch, remis à false quand elle s'éloigne."""
     is_being_hit: bool
 
 
@@ -27,6 +26,7 @@ class Gate:
 
 
 def create_switch(config: SwitchConfig) -> Switch:
+    """création dé l'interrupteur à partir de la configuration en map"""
     return Switch(
         switch_id=config.switch_id,
         x=config.x,
@@ -40,6 +40,7 @@ def create_gate(
     config: GateConfig,
     switch_states: dict[str, bool],
 ) -> Gate:
+    """création du portail, et evalutation pour voir s'il doit etre ouvert"""
     return Gate(
         x=config.x,
         y=config.y,
@@ -49,6 +50,7 @@ def create_gate(
 
 
 def switch_states(switches: list[Switch]) -> dict[str, bool]:
+    """on convertit la liste des switch en dictionnaire avec leur nom(id) et état"""
     return {
         switch.switch_id: switch.is_on
         for switch in switches
@@ -56,6 +58,7 @@ def switch_states(switches: list[Switch]) -> dict[str, bool]:
 
 
 def create_switches(game_map: Map) -> list[Switch]:
+    """création des switch dans la map"""
     return [
         create_switch(config)
         for config in game_map.switch_configs
@@ -75,6 +78,7 @@ def create_gates(
 
 
 def toggle_switch(switch: Switch) -> None:
+    """actualisation de l'état de l'interrupteur"""
     switch.is_on = not switch.is_on
 
 
@@ -82,6 +86,7 @@ def update_gates(
     switches: list[Switch],
     gates: list[Gate],
 ) -> None:
+    """determine l'état des portails en fonction des switch"""
     states = switch_states(switches)
 
     for gate in gates:
