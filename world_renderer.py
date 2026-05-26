@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import arcade
 
-#TYPE_CHECKING permet d'éviter les imports circulaires
-if TYPE_CHECKING:
-    from player import Player
-    from weapon_system import WeaponSystem, ActiveWeapon
-    from enemy_system import EnemySystem
+from player import Player
+from weapon_system import WeaponSystem, ActiveWeapon
+from enemy_system import EnemySystem
 
 
 class WorldRenderer:
