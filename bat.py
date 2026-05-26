@@ -73,14 +73,9 @@ class Bat(Enemy):
             self.logic_y = _clamp(self.logic_y, self.min_y, self.max_y)
 
     def sync_sprite(self) -> None:
-        """c'est ici qu'on déclare la position visible du sprite"""
         self.center_x = self.logic_x
         self.center_y = self.logic_y
 
-
-# --------------------------------------------------
-# Factories
-# --------------------------------------------------
 
 def _compute_bat_bounds(game_map: Map, x: int, y: int) -> tuple[int, int, int, int]:
     """ici, on calcule les limites de déplacement de la chauve-souris"""
@@ -98,7 +93,6 @@ def _compute_bat_bounds(game_map: Map, x: int, y: int) -> tuple[int, int, int, i
 
 
 def create_bat(game_map: Map, x: int, y: int, rng: random.Random) -> Bat:
-    """fonction qui sert à créer une chauve-souris à partir de l a map"""
     dx, dy = _random_velocity(rng, BAT_SPEED)
     min_x, max_x, min_y, max_y = _compute_bat_bounds(game_map, x, y)
 
@@ -115,7 +109,6 @@ def create_bat(game_map: Map, x: int, y: int, rng: random.Random) -> Bat:
 
 
 def create_bats(game_map: Map, rng: random.Random) -> list[Bat]:
-    """fonction qui crée toutes les bats trouvées dans la map"""
     return [
         create_bat(game_map, x, y, rng)
         for x, y in find_cells(game_map, GridCell.BAT)

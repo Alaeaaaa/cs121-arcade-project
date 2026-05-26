@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import arcade
 
+#TYPE_CHECKING permet d'éviter les imports circulaires
 if TYPE_CHECKING:
     from player import Player
     from weapon_system import WeaponSystem, ActiveWeapon
@@ -13,7 +14,8 @@ if TYPE_CHECKING:
 class WorldRenderer:
     #responsable unique du dessin : monde et interface
     #ça évite les grand blocs de code dans gameview, et comme
-    #ça, meme en terme d'architecture c'est plus intéressant en séparant le dessin
+    #ça, meme en terme d'architecture c'est plus intéressant en séparant le dessin,
+    #c'est même un de nos points forts comme mentionné dans le fichier du design
     player: Player
     weapons:WeaponSystem
     enemies:EnemySystem

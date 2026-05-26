@@ -12,7 +12,6 @@ from constants import (
     DESTINATION_EPSILON,
     MAX_VIEW_DISTANCE,
     DIRECT_CHASE_DISTANCE,
-    RECOMPUTE_PATH_DISTANCE,
 )
 from map import GridCell, Map
 from navmesh import NavMesh, Point, shortest_path
@@ -51,6 +50,8 @@ class Slime(Enemy):
 
         if self._can_see_player(context.player_position, context.walls):
             if distance_to_player <= DIRECT_CHASE_DISTANCE:
+                # un peu de créativité, ça nous permet d'éviter de devoir recalculer dijkstra qui est tout de même
+                # assez gourmand
                 self._move_directly_to(context.player_position)
                 return
             self._set_destination_to_player(context.navmesh, context.player_position)
@@ -103,9 +104,6 @@ class Slime(Enemy):
 
     def _set_destination_to_player(self, navmesh: NavMesh, player_position: Point) -> None:
         """on selectionne la position du joueur comme destination, mais juste si elle a "assez changé" """
-        destination = (self.destination_x, self.destination_y)
-        if math.dist(destination, player_position) <= RECOMPUTE_PATH_DISTANCE:
-            return
         self.destination_x, self.destination_y = player_position
         self._recompute_path(navmesh)
 
@@ -117,14 +115,12 @@ class Slime(Enemy):
 
     #quelques méthodes utiles au slime :
     def _has_reached_destination(self) -> bool:
-        """ici c'est pour dire si le slime est arrivé suffisament près de sa destination"""
         return math.dist(
             (self.logic_x, self.logic_y),
             (self.destination_x, self.destination_y),
         ) <= DESTINATION_EPSILON
 
     def _can_see_player(self, player_position: Point, walls: arcade.SpriteList) -> bool:
-        """on vérifie si le slime voit le joueur"""
         slime_position = (self.logic_x, self.logic_y)
         if math.dist(slime_position, player_position) > MAX_VIEW_DISTANCE:
             return False

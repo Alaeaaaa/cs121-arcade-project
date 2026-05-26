@@ -56,8 +56,6 @@ SWORD_ATTACK_DURATION = 0.3
 
 BOOMERANG_SCALE = 2
 
-# Collisions dangereuses
-
 # Distance à partir de laquelle le joueur tombe dans un trou.
 HOLE_DEATH_DISTANCE = 16
 
@@ -72,7 +70,6 @@ PATROL_RADIUS = 3
 DESTINATION_EPSILON = 4.0
 MAX_VIEW_DISTANCE = 12 * TILE_SIZE
 DIRECT_CHASE_DISTANCE = 2 * TILE_SIZE
-RECOMPUTE_PATH_DISTANCE = TILE_SIZE // 2
 
 # Constantes des chauves-souris
 

@@ -3,12 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Final,Any
+#on a utilisé le type Any, mais à refactoriser
 from abc import abstractmethod
 
 import yaml
-
-
-# Types de cellules possibles dans la map
 
 class GridCell(Enum):
     GRASS = auto()
@@ -24,16 +22,13 @@ class GridCell(Enum):
     GATE = auto()
 
 
-# Exceptions
-
 class InvalidMapFileException(Exception):
     pass
 
 
 
-# Formules logiques pour les portails
-
 class GateCondition:
+    #classe abstraite, parent des formules logiques des portails.
     @abstractmethod
     def evaluate(self, switch_states: dict[str, bool]) -> bool:
         ...
@@ -199,10 +194,6 @@ def parse_gates(data: Any) -> list[GateConfig]:
         raise InvalidMapFileException("gates doit être une liste")
     return [parse_gate_config(item) for item in data]
 
-
-
-# la classe Map
-
 class Map:
     width: Final[int]
     height: Final[int]
@@ -241,9 +232,6 @@ class Map:
         return self._cells[y][x]
 
 
-
-# Lecture du fichier
-
 def map_from_file(path: str) -> Map:
     with open(path, "r") as f:
         text = f.read()
@@ -275,8 +263,6 @@ def parse_config(config_text: str) -> dict[str, Any]:
 
     return data
 
-
-# Dictionnaire de conversion caractère -> cellule.
 _CHAR_TO_CELL: dict[str, GridCell] = {
     " ": GridCell.GRASS,
     "x": GridCell.BUSH,
@@ -344,8 +330,8 @@ class _GridParseResult:
 
 def _parse_grid(grid_lines: list[str], width: int, height: int) -> _GridParseResult:
 
-    #Construit la grille de cellules depuis les lignes de texte.
-    #Cherche la position de départ du joueur ('P') au passage.
+    #Construit la grille de cellules depuis les lignes de texte et cherche
+    #la position de départ du joueur ('P') au passage.
 
     if len(grid_lines) != height:
         raise InvalidMapFileException("La hauteur de la map ne correspond pas")

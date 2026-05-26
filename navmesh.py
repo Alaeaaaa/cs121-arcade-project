@@ -9,18 +9,14 @@ import networkx as nx
 from map import GridCell, Map
 from utils import grid_to_pixels
 
-
-# Un noeud du navmesh est une case de la grille.
 Node = tuple[int, int]
-
-# Un point en pixels.
 Point = tuple[float, float]
+# on a fait la distinction entre un point en pixels et un noeud du graphe.
 
 FINESSE=3
 
 @dataclass
 class NavMesh:
-    # le graphe contient les cases accessibles aux slimes.
     graph: nx.Graph[Node]
 
 
@@ -38,7 +34,6 @@ def node_position(node: Node) -> Point:
 
 
 def distance_between_points(p1: Point, p2: Point) -> float:
-    # Distance euclidienne entre deux points.
     x1, y1 = p1
     x2, y2 = p2
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
@@ -49,17 +44,15 @@ def is_inside_map(game_map: Map, x: int, y: int) -> bool:
 
 
 def is_slime_obstacle(cell: GridCell) -> bool:
-    """les slimes ne peuvent pas marcher sur certains obstacles
+    """les slimes ne peuvent pas marcher sur les trous et buissons,
     c'est ce qu'on vérifie ici: """
     return cell in {
         GridCell.BUSH,
         GridCell.HOLE,
-        GridCell.GATE,
     }
 
 def _is_too_close_to_bush(position: Point, map: Map) -> bool:
-        """check si on est trop prche d'un buisson de la map en parcourant celle-ci,
-        en récupérant la posiion des buissons et en calculant sa distance au point."""
+        """check si on est trop prche d'un buisson de la map"""
         for y in range(map.height):
             for x in range(map.width):
                 if map.get(x, y) == GridCell.BUSH:
@@ -70,7 +63,7 @@ def _is_too_close_to_bush(position: Point, map: Map) -> bool:
         return False
 
 def can_slime_stand_on(game_map: Map, x: int, y: int) -> bool:
-    # Une case devient un noeud du navmesh si le slime peut marcher dessus.
+    # renvoie un booléen : True si on peut positionner le slime, False sinon
     if not is_inside_map(game_map, x, y):
         #on vérifie si on est à l'intérieur de la map
         return False
@@ -79,18 +72,18 @@ def can_slime_stand_on(game_map: Map, x: int, y: int) -> bool:
 
 
 def add_navmesh_nodes(game_map: Map, graph: nx.Graph[Node]) -> None:
-    #on ajoute un noeud pour chaque case accessible:
     for y in range(game_map.height):
         for x in range(game_map.width):
             #on regarde ce qu'il y'a dans la case, voir si le slime peut s'y trouver
             if can_slime_stand_on(game_map, x, y):
                 #on peut s'y positionner, on doit créer les noeuds
-                #comme on est sur une case ou il y'a FINESS**2 noeuds, on procède comme suit :
+                #comme on est sur une case ou il y'a FINESSE**2 noeuds, on procède comme suit :
                 for mini_y in range(FINESSE):
                     for mini_x in range(FINESSE):
                         #noeud:
                         node=(mini_x+x*FINESSE,mini_y+y*FINESSE)
                         #la finesse ajoutée oblige à multiplier par FINESSE justement
+
                         point=node_position(node)
                         #on regarde les coordonnées de ce noeud en pixels, voir s'il est trop proche
                         #d'un obstacle:
@@ -115,7 +108,7 @@ def neighbor_nodes(node: Node) -> list[Node]:
 
 
 def add_navmesh_edges(graph: nx.Graph[Node]) -> None:
-    """on ajute les arêtes en tenan compte bien sur des poids de chacune d'elle,
+    """on ajute les arêtes en tenant compte biensur des poids de chacune d'elle,
     pour cela on a bien défini notre fonction distance_between_points"""
     for node in graph.nodes:
         for neighbor in neighbor_nodes(node):
@@ -128,7 +121,6 @@ def add_navmesh_edges(graph: nx.Graph[Node]) -> None:
 
 
 def create_navmesh(game_map: Map) -> NavMesh:
-    """on crée le navmesh complet"""
     graph: nx.Graph[Node] = nx.Graph()
     add_navmesh_nodes(game_map, graph)
     add_navmesh_edges(graph)

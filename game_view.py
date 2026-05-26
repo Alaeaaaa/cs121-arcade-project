@@ -4,7 +4,6 @@ from enemy import EnemyContext
 import random
 
 import arcade
-
 from constants import MAX_WINDOW_HEIGHT, MAX_WINDOW_WIDTH, SCALE, SHIELD_SCALE, SWITCH_SCALE, TILE_SIZE
 from textures import (
     ANIMATION_CRYSTAL,
@@ -154,7 +153,7 @@ class GameView(arcade.View):
         )
 
     def _setup_systems(self) -> None:
-        """on crée les grands systèmes du jeu: armes, collisions et renderer qui dessine tout """
+        """on crée les grands systèmes du jeu: weaponsystem, collisions et renderer"""
         self.weapons = WeaponSystem(self.player)
 
         self.collisions = CollisionHandler(
@@ -193,7 +192,6 @@ class GameView(arcade.View):
         self.right = self.left = self.up = self.down = False
 
     # fonctions arcade:
-
 
     def on_show_view(self) -> None:
         self.window.width = min(MAX_WINDOW_WIDTH, self.world_width)
@@ -260,7 +258,6 @@ class GameView(arcade.View):
         self.camera.position = self.player.position
 
     # Switches et gates
-
     def _sync_gate(self, switch:Switch, switch_sprite: arcade.Sprite) -> None:
         """change l'état du switch et met à jour le portail"""
         toggle_switch(switch)
@@ -283,7 +280,6 @@ class GameView(arcade.View):
                     self.walls.append(gate_sprite)
 
     #vie, dégâts, reset (inclut nos extensions):
-
     def _add_score(self) -> None:
         self.score += 1
 
@@ -310,7 +306,6 @@ class GameView(arcade.View):
         self.window.show_view(GameView(self.map))
 
     #création du monde
-
     def _create_cell_sprites(self, x: int, y: int) -> None:
         """création des sprites à partir de la map"""
         self.grounds.append(arcade.Sprite(

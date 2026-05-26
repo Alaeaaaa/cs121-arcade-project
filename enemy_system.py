@@ -49,14 +49,13 @@ class EnemySystem:
             spinner.sync_sprite()
             self.spinner_sprites.append(spinner)
 
-    #update principal qui sera appelé par gameview
-
     def update(
         self,
         context:EnemyContext
     ) -> None:
         """autre point fort du design, chaque entité gère sa propre logique.
-        on appelle donc juste les bonnes méthodes en mettant à jour les sprites"""
+        on appelle donc juste les bonnes méthodes en mettant à jour les sprites
+        c'est également cette méthode qui sera appelée par gameview"""
         for bat in self.bats:
             bat.update_logic(context)
             bat.sync_sprite()
@@ -70,10 +69,10 @@ class EnemySystem:
             spinner.sync_sprite()
 
     def update_animations(self) -> None:
-        for sprite in (*self.bat_sprites, *self.slime_sprites):
+        for sprite in self.bat_sprites:
             sprite.update_animation()
-
-    # Collisions
+        for sprite in self.slime_sprites:
+            sprite.update_animation()
 
     @property
     def all_sprites(self) -> list[arcade.SpriteList]:
