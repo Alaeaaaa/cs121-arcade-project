@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enemy import EnemyContext
 
 import random
 
@@ -94,7 +95,7 @@ class GameView(arcade.View):
         """on crée le joueur et sa spritelist"""
         self.player = Player(
             animation=ANIMATION_PLAYER_IDLE_DOWN,
-            scale=SCALE,
+            scale=int(SCALE),
             center_x=grid_to_pixels(self.map.player_start_x),
             center_y=grid_to_pixels(self.map.player_start_y),
         )
@@ -237,12 +238,12 @@ class GameView(arcade.View):
         for crystal in self.crystals:
             crystal.update_animation()
 
-        self.enemies.update(
-            navmesh=self.navmesh,
-            rng=self.random,
-            player_position=self.player.position,
-            walls=self.walls,
-        )
+        context=EnemyContext(navmesh=self.navmesh,
+        rng=self.random,
+        player_position=self.player.position,
+        walls=self.walls)
+
+        self.enemies.update(context)
         self.enemies.update_animations()
 
         self.weapons.update(

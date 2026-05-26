@@ -1,6 +1,19 @@
+from dataclasses import dataclass
 from abc import abstractmethod
 import arcade
-
+from navmesh import NavMesh, Point
+import random
+@dataclass
+class EnemyContext:
+    """cette classe est vraiment juste utile pour la fonction update,
+    ça nous permet de garder update comme méthode abstraite sans passer par **kwargs
+    qui rend le checker pas content quand on override la méthode pour le slime.
+    de cette façon, on garde la même structure, on définit EnemyContext dans gameview
+    avant de le passer à update, chaque type de monstre utilise les données dont il a besoin."""
+    navmesh: NavMesh
+    rng: random.Random
+    player_position: Point
+    walls: arcade.SpriteList
 
 class Enemy(arcade.TextureAnimationSprite):
     """classe commune à tous nos ennemis. On hérite de textureanimationsprite
@@ -12,10 +25,10 @@ class Enemy(arcade.TextureAnimationSprite):
         super().__init__(animation=animation, scale=scale)
 
     @abstractmethod
-    def update_logic(self, **kwargs) -> None:
-        """c'est la meilleure façon à laquelle on a pensé sans définir de nouvelle classe.
-        sans les **kwargs, on aurait défini une nouvelle classe avec les attributs nécessaires
-        au fonctionnement de chaque ennemi, parfois trop, parfois rien."""
+    def update_logic(self, context:EnemyContext) -> None:
+        """après je ne sais pas combien de refactoring, on souffle enfin.
+        on s'est débarassé des **kwargs en introduisant la nouvelle classe EnemyContext.
+        chaque ennemi utilise alors les données dont il a besoin."""
         ...
     @abstractmethod
     def sync_sprite(self) -> None:

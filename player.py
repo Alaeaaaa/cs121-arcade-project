@@ -98,9 +98,15 @@ class Player(arcade.TextureAnimationSprite):
         # au lieu d'avoir un grand if/elif pour chaque direction,
         # on utilise les dictionnaires d'animations définis dans textures.py.
         if is_moving:
-            self.animation = PLAYER_RUN_ANIMATIONS[self.direction]
+            new_animation = PLAYER_RUN_ANIMATIONS[self.direction]
         else:
-            self.animation = PLAYER_IDLE_ANIMATIONS[self.direction]
+            new_animation = PLAYER_IDLE_ANIMATIONS[self.direction]
+        """cette dernière conidtion if a été ajouté vers la fin du projet, car
+        on voyait que le joueur'vibrait' quand il s'avançait, on s'est alors dit
+        qu'il n'est pas necessaire de mettre l'anmation à jour à chaque fois, mais juste
+        si il y'a un changement de direcion."""
+        if self.animation!=new_animation:
+            self.animation=new_animation
 
     def is_invincible(self) -> bool:
 

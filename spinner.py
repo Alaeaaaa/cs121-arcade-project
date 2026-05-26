@@ -2,16 +2,13 @@ from __future__ import annotations
 
 from constants import SCALE, SPINNER_MOVEMENT_SPEED, TILE_SIZE
 from map import GridCell, Map
-from enemy import Enemy
+from enemy import Enemy, EnemyContext
 from textures import ANIMATION_SPINNER
 from utils import grid_to_pixels
 
 
 class Spinner(Enemy):
-    """
-    Spinner : se déplace en ligne droite (horizontal ou vertical),
-    fait demi-tour en bout de course.
-    """
+
     logic_x:float
     logic_y:float
     horizontal:bool
@@ -46,7 +43,7 @@ class Spinner(Enemy):
         self.min_y = float(grid_to_pixels(min_y))
         self.max_y = float(grid_to_pixels(max_y))
 
-    def update_logic(self, **kwargs) -> None:
+    def update_logic(self, context:EnemyContext) -> None:
         """on avance le spinner, et on inverse sa direction s'il atteint une limite"""
         if self.horizontal:
             self.logic_x += self.direction * SPINNER_MOVEMENT_SPEED

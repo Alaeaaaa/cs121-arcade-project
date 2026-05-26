@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enemy import EnemyContext
 
 import random
 from typing import TYPE_CHECKING
@@ -52,28 +53,20 @@ class EnemySystem:
 
     def update(
         self,
-        navmesh: NavMesh,
-        rng: random.Random,
-        player_position: Point,
-        walls: arcade.SpriteList,
+        context:EnemyContext
     ) -> None:
         """autre point fort du design, chaque entité gère sa propre logique.
         on appelle donc juste les bonnes méthodes en mettant à jour les sprites"""
         for bat in self.bats:
-            bat.update_logic()
+            bat.update_logic(context)
             bat.sync_sprite()
 
         for slime in self.slimes:
-            slime.update_logic(
-                navmesh=navmesh,
-                rng=rng,
-                player_position=player_position,
-                walls=walls,
-            )
+            slime.update_logic(context)
             slime.sync_sprite()
 
         for spinner in self.spinners:
-            spinner.update_logic()
+            spinner.update_logic(context)
             spinner.sync_sprite()
 
     def update_animations(self) -> None:

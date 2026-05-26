@@ -105,10 +105,13 @@ class CollisionHandler:
         #on délègue la tâche à EnemySystem
         return self.enemies.weapon_hits(weapon)
 
-    def weapon_hits_crystals(self, weapon: arcade.Sprite) -> None:
+    def weapon_hits_crystals(self, weapon: arcade.Sprite) -> bool:
         #permet à l'arme (donc l'épée ici) de ramasser les crystaux
         hit = arcade.check_for_collision_with_list(weapon, self.crystals)
-        self._collect_crystals(hit)
+        if hit :
+            self._collect_crystals(hit)
+            return True
+        return False
 
     def weapon_hits_switches(self, weapon: arcade.Sprite) -> bool:
         #on active les interrupteurs touchés, et automatiquement on doit mettre à jour les portails

@@ -5,7 +5,7 @@ import random
 
 from map import Map, GridCell
 from utils import grid_to_pixels, find_cells
-from enemy import Enemy
+from enemy import Enemy, EnemyContext
 from textures import ANIMATION_BAT
 
 from constants import BAT_SPEED, BAT_WIDTH, BAT_HEIGHT, SCALE
@@ -58,7 +58,7 @@ class Bat(Enemy):
         self.min_y = min_y
         self.max_y = max_y
 
-    def update_logic(self, **kwargs) -> None:
+    def update_logic(self, context:EnemyContext) -> None:
         """c'est la fonction qui met à jour la pos logique de la bat."""
         self.logic_x += self.dx
         self.logic_y += self.dy
