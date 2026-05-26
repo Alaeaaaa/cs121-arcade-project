@@ -8,9 +8,7 @@ from abc import abstractmethod
 import yaml
 
 
-# ==================================================
 # Types de cellules possibles dans la map
-# ==================================================
 
 class GridCell(Enum):
     GRASS = auto()
@@ -26,17 +24,14 @@ class GridCell(Enum):
     GATE = auto()
 
 
-# ==================================================
 # Exceptions
-# ==================================================
 
 class InvalidMapFileException(Exception):
     pass
 
 
-# ==================================================
+
 # Formules logiques pour les portails
-# ==================================================
 
 class GateCondition:
     @abstractmethod
@@ -130,10 +125,7 @@ def parse_gate_condition(data: Any) -> GateCondition:
 
     raise InvalidMapFileException(f"Condition inconnue : {key}")
 
-
-# ==================================================
 # Config des switches et gates
-# ==================================================
 
 @dataclass(frozen=True)
 class SwitchConfig:
@@ -209,9 +201,8 @@ def parse_gates(data: Any) -> list[GateConfig]:
     return [parse_gate_config(item) for item in data]
 
 
-# ==================================================
-# Map
-# ==================================================
+
+# la classe Map
 
 class Map:
     width: Final[int]
@@ -251,9 +242,8 @@ class Map:
         return self._cells[y][x]
 
 
-# ==================================================
+
 # Lecture du fichier
-# ==================================================
 
 def map_from_file(path: str) -> Map:
     with open(path, "r") as f:

@@ -73,9 +73,7 @@ class Slime(Enemy):
         self.center_x = self.logic_x
         self.center_y = self.logic_y
 
-    # --------------------------------------------------
     # Déplacement
-    # --------------------------------------------------
 
     def _move_directly_to(self, target: Point) -> None:
         """on déplace le slime en ligne droite vers un point"""
@@ -103,9 +101,7 @@ class Slime(Enemy):
 
         self._move_directly_to(point)
 
-    # --------------------------------------------------
-    # Destination / chemin
-    # --------------------------------------------------
+    # Destination et chemin du slime
 
     def _set_random_destination(self, navmesh: NavMesh, rng: random.Random) -> None:
         """on choisit une destination au hasard parmi celles possibles, et on recalcule le chemin"""

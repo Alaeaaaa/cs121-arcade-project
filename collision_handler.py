@@ -54,9 +54,8 @@ class CollisionHandler:
         self.on_score = on_score
         self.on_gate_sync = on_gate_sync
 
-    # --------------------------------------------------
-    # Collisions joueur (appelé chaque frame)
-    # --------------------------------------------------
+
+    # Collisions du joueur
 
     def handle_player(self) -> None:
         """on gère ici les colliusions du joueur avec les crystaux, boucliers, ennemies et les trous"""
@@ -99,9 +98,8 @@ class CollisionHandler:
             for hole in nearby
         )
 
-    # --------------------------------------------------
-    # Collisions armes
-    # --------------------------------------------------
+
+    #Collisions des armes:
 
     def weapon_hits_enemies(self, weapon: arcade.Sprite) -> bool:
         #on délègue la tâche à EnemySystem

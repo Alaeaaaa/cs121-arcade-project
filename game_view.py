@@ -88,9 +88,7 @@ class GameView(arcade.View):
         self.camera = arcade.camera.Camera2D()
         self.ui_camera = arcade.camera.Camera2D()
 
-    # ==================================================
-    # Setup
-    # ==================================================
+    #setup initial:
 
     def _setup_player(self) -> None:
         """on crée le joueur et sa spritelist"""
@@ -193,9 +191,8 @@ class GameView(arcade.View):
         #au début aucune touche n'est appuyée
         self.right = self.left = self.up = self.down = False
 
-    # ==================================================
-    # Arcade callbacks
-    # ==================================================
+    # fonctions arcade:
+
 
     def on_show_view(self) -> None:
         self.window.width = min(MAX_WINDOW_WIDTH, self.world_width)
@@ -261,9 +258,7 @@ class GameView(arcade.View):
         self.collisions.handle_player()
         self.camera.position = self.player.position
 
-    # ==================================================
     # Switches et gates
-    # ==================================================
 
     def _sync_gate(self, switch:Switch, switch_sprite: arcade.Sprite) -> None:
         """change l'état du switch et met à jour le portail"""
@@ -286,9 +281,7 @@ class GameView(arcade.View):
                 if gate_sprite not in self.walls:
                     self.walls.append(gate_sprite)
 
-    # ==================================================
-    # Vie, dégâts, reset
-    # ==================================================
+    #vie, dégâts, reset (inclut nos extensions):
 
     def _add_score(self) -> None:
         self.score += 1
@@ -315,9 +308,7 @@ class GameView(arcade.View):
         nouvelle instance de gameview"""
         self.window.show_view(GameView(self.map))
 
-    # ==================================================
-    # Création de sprites monde
-    # ==================================================
+    #création du monde
 
     def _create_cell_sprites(self, x: int, y: int) -> None:
         """création des sprites à partir de la map"""

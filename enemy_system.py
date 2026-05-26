@@ -48,9 +48,7 @@ class EnemySystem:
             spinner.sync_sprite()
             self.spinner_sprites.append(spinner)
 
-    # --------------------------------------------------
-    # Update principal, appelé chaque frame par on_update
-    # --------------------------------------------------
+    #update principal qui sera appelé par gameview
 
     def update(
         self,
@@ -79,12 +77,10 @@ class EnemySystem:
             spinner.sync_sprite()
 
     def update_animations(self) -> None:
-        for sprite in (*self.bat_sprites, *self.slime_sprites, *self.spinner_sprites):
+        for sprite in (*self.bat_sprites, *self.slime_sprites):
             sprite.update_animation()
 
-    # --------------------------------------------------
     # Collisions
-    # --------------------------------------------------
 
     @property
     def all_sprites(self) -> list[arcade.SpriteList]:
