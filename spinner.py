@@ -63,7 +63,6 @@ class Spinner(Enemy):
 
 
 def _is_blocking_cell(cell: GridCell) -> bool:
-    """c'est pour indiquer si une cellule bloque le trajet d'un spinner"""
     return cell == GridCell.BUSH
 
 

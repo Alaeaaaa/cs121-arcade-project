@@ -28,7 +28,6 @@ class Boomerang(Weapon):
         self.distance_travelled = 0.0
 
     def is_active(self) -> bool:
-        #reflète l'état du boomerang, false si inactif et true sinon
         return self.state != BoomerangState.INACTIVE
 
     def launch(self, direction: Direction, x: float, y: float) -> None:
@@ -40,7 +39,6 @@ class Boomerang(Weapon):
         self.distance_travelled = 0.0
 
     def return_to_player(self) -> None:
-        #change l'état en "returning" et revient donc vers le joueur
         self.state = BoomerangState.RETURNING
 
     def deactivate(self) -> None:

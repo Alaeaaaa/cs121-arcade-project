@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Final, Any
+from typing import Final,Any
 from abc import abstractmethod
 
 import yaml
@@ -87,13 +87,11 @@ class OrCondition(GateCondition):
 
 def parse_gate_condition(data: Any) -> GateCondition:
     """ Une condition de portail est un dictionnaire YAML avec exactement une clef.
-    on accepte tout à l'entrée, mais on doit vérifier que c'est un dictionnaire"""
+    on ne sait pas ce qu'il y'a à l'entrée, mais on doit vérifier que c'est un dictionnaire"""
     if not isinstance(data, dict):
         raise InvalidMapFileException("Une condition de portail doit être un dictionnaire")
-
     if len(data) != 1:
-        raise InvalidMapFileException("Une condition doit avoir exactement une clef")
-
+            raise InvalidMapFileException("Une condition doit avoir exactement une clef")
     key = next(iter(data))
     value = data[key]
 
@@ -122,8 +120,9 @@ def parse_gate_condition(data: Any) -> GateCondition:
             parse_gate_condition(value[0]),
             parse_gate_condition(value[1]),
         )
-
     raise InvalidMapFileException(f"Condition inconnue : {key}")
+
+
 
 # Config des switches et gates
 

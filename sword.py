@@ -1,3 +1,4 @@
+from constants import SCALE
 from enum import Enum, auto
 
 from direction import Direction
@@ -12,11 +13,13 @@ class SwordState(Enum):
 
 
 class Sword(Weapon):
-
+    state:SwordState
+    direction:Direction
+    time:float
     def __init__(self)->None:
         super().__init__(
             animation=ANIMATION_SWORD[Direction.SOUTH],
-            scale=2,
+            scale=SCALE,
         )
         self.state = SwordState.INACTIVE
         self.time = 0.0
@@ -36,5 +39,4 @@ class Sword(Weapon):
         self.time = 0.0
 
     def update_direction_animation(self) -> None:
-        #mise à jour de l'animation selon la direction
         self.animation = ANIMATION_SWORD[self.direction]

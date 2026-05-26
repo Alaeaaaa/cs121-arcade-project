@@ -33,9 +33,7 @@ class Player(arcade.TextureAnimationSprite):
         # Elle sert à choisir la bonne animation et la direction des attaques.
         self.direction = Direction.SOUTH
 
-        # =========================
         # Extension : système de vies
-        # =========================
 
         # Nombre maximal de cœurs.
         # On le garde pour pouvoir afficher les cœurs vides aussi.
@@ -49,9 +47,7 @@ class Player(arcade.TextureAnimationSprite):
         # Au début, il n'est pas invincible, donc la valeur est 0.
         self.invincibility_time = 0.0
 
-        # =========================
         # Extension : bouclier
-        # =========================
 
         # Temps restant pendant lequel le bouclier est actif.
         # S'il vaut 0, le joueur n'a pas de bouclier.

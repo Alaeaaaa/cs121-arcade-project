@@ -26,7 +26,6 @@ class Gate:
 
 
 def create_switch(config: SwitchConfig) -> Switch:
-    """création dé l'interrupteur à partir de la configuration en map"""
     return Switch(
         switch_id=config.switch_id,
         x=config.x,
@@ -58,7 +57,6 @@ def switch_states(switches: list[Switch]) -> dict[str, bool]:
 
 
 def create_switches(game_map: Map) -> list[Switch]:
-    """création des switch dans la map"""
     return [
         create_switch(config)
         for config in game_map.switch_configs
