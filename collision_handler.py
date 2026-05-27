@@ -21,7 +21,7 @@ class CollisionHandler:
     joueur vs cristaux, boucliers, ennemis, trous
     armes vs ennemis, switches, cristaux
     """
-
+ 
     def __init__(
         self,
         player: Player,
