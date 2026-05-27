@@ -25,7 +25,7 @@ def _random_velocity(rng: random.Random, speed: float) -> tuple[float, float]:
 
 
 class Bat(Enemy):
-<<<<<<< HEAD
+
     """Chauve-souris : rebondit dans un rectangle de mouvement.
     à noter qu'on a opté pour un design séparant logique et affichage,
     c'est sync_sprite qui donnera à center_x et y leurs valeurs. """
@@ -37,10 +37,10 @@ class Bat(Enemy):
     max_x:int
     min_y:int
     max_y:int
-=======
+
     #Chauve-souris : rebondit dans un rectangle de mouvement.
 
->>>>>>> 7607e3b (c)
+
     def __init__(
         self,
         start_x: float,

@@ -13,7 +13,11 @@ Node = tuple[int, int]
 Point = tuple[float, float]
 # on a fait la distinction entre un point en pixels et un noeud du graphe.
 
-FINESSE=3
+# FINESSE : nombre de noeuds par côté de cellule (doit être un entier impair).
+# 1 → 1 noeud/cellule (ancien comportement)
+# 3 → 9 noeuds/cellule (nouveau comportement)
+FINESSE = 3
+
 
 @dataclass
 class NavMesh:
@@ -21,15 +25,14 @@ class NavMesh:
 
 
 def node_position(node: Node) -> Point:
-    """avant d'introduire la finesse, on se contentait d'utiliser grid_to_pixels,
-    mais là on doit positionner le noeud au centre de la nouvelle sous-case dans
-    la nouvelle grille 3 fois plus fine que la map"""
+    """positionne le noeud au centre de sa sous-case dans la grille FINESSE fois plus fine.
+    La formule générale pour n×n noeuds par cellule est (2i+1)*s/(2n),
+    ce qui donne, pour FINESSE=3 : s/6, 3s/6 (=centre), 5s/6."""
     x, y = node
-    #on est contraint d'ajouter le 0.5 pour se positionner au centre de la sous-case
-    #càd on rajoute la moitié de "mini_TILE_SIZE" qui est égale à TILE_SIZE/FINESSE
+    # (2*x + 1) * TILE_SIZE / (2 * FINESSE)  — formule générale
     return (
-        (x+0.5)*TILE_SIZE/FINESSE,
-        (y+0.5)*TILE_SIZE/FINESSE
+        (2 * x + 1) * TILE_SIZE / (2 * FINESSE),
+        (2 * y + 1) * TILE_SIZE / (2 * FINESSE),
     )
 
 
@@ -44,72 +47,66 @@ def is_inside_map(game_map: Map, x: int, y: int) -> bool:
 
 
 def is_slime_obstacle(cell: GridCell) -> bool:
-    """les slimes ne peuvent pas marcher sur les trous et buissons,
-    c'est ce qu'on vérifie ici: """
+    """les slimes ne peuvent pas marcher sur les trous et buissons."""
     return cell in {
         GridCell.BUSH,
         GridCell.HOLE,
     }
 
-def _is_too_close_to_bush(position: Point, map: Map) -> bool:
-        """check si on est trop prche d'un buisson de la map"""
-        for y in range(map.height):
-            for x in range(map.width):
-                if map.get(x, y) == GridCell.BUSH:
-                    bush_center = (grid_to_pixels(x), grid_to_pixels(y))
 
-                    if distance_between_points(position, bush_center) < TILE_SIZE:
-                        return True
-        return False
+def _is_too_close_to_bush(position: Point, game_map: Map) -> bool:
+    """vérifie si le point est à moins d'une TILE_SIZE d'un buisson.
+    On exclut les noeuds trop proches des buissons pour éviter que les slimes
+    rasent les obstacles en diagonale."""
+    for y in range(game_map.height):
+        for x in range(game_map.width):
+            if game_map.get(x, y) == GridCell.BUSH:
+                bush_center = (grid_to_pixels(x), grid_to_pixels(y))
+                if distance_between_points(position, bush_center) < TILE_SIZE:
+                    return True
+    return False
+
 
 def can_slime_stand_on(game_map: Map, x: int, y: int) -> bool:
-    # renvoie un booléen : True si on peut positionner le slime, False sinon
+    """renvoie True si la cellule (x, y) est accessible pour un slime."""
     if not is_inside_map(game_map, x, y):
-        #on vérifie si on est à l'intérieur de la map
         return False
-        #si on l'est, alors on vérifie si c'est un obstacle
     return not is_slime_obstacle(game_map.get(x, y))
 
 
 def add_navmesh_nodes(game_map: Map, graph: nx.Graph[Node]) -> None:
+    """crée FINESSE×FINESSE noeuds par cellule accessible.
+    Pour chaque sous-noeud, on vérifie en plus qu'il n'est pas trop près
+    d'un buisson (les trous sont autorisés, on peut longer les bords)."""
     for y in range(game_map.height):
         for x in range(game_map.width):
-            #on regarde ce qu'il y'a dans la case, voir si le slime peut s'y trouver
             if can_slime_stand_on(game_map, x, y):
-                #on peut s'y positionner, on doit créer les noeuds
-                #comme on est sur une case ou il y'a FINESSE**2 noeuds, on procède comme suit :
                 for mini_y in range(FINESSE):
                     for mini_x in range(FINESSE):
-                        #noeud:
-                        node=(mini_x+x*FINESSE,mini_y+y*FINESSE)
-                        #la finesse ajoutée oblige à multiplier par FINESSE justement
-
-                        point=node_position(node)
-                        #on regarde les coordonnées de ce noeud en pixels, voir s'il est trop proche
-                        #d'un obstacle:
+                        node: Node = (x * FINESSE + mini_x, y * FINESSE + mini_y)
+                        point = node_position(node)
                         if not _is_too_close_to_bush(point, game_map):
                             graph.add_node(node)
 
 
 def neighbor_nodes(node: Node) -> list[Node]:
-    """chaque noeud possède au plus 8 voisins, soit en verticale, horizontale ou diagonale
-    les coordonnées varient donc de +-1 ou 0, et ce même après l'ajout de la finesse."""
+    """chaque noeud possède au plus 8 voisins (4-connexité + diagonales).
+    Les coordonnées varient de ±1 ou 0 — identique avant et après l'ajout de la finesse."""
     x, y = node
     return [
         (x - 1, y - 1),
-        (x, y - 1),
+        (x,     y - 1),
         (x + 1, y - 1),
-        (x - 1, y),
-        (x + 1, y),
+        (x - 1, y    ),
+        (x + 1, y    ),
         (x - 1, y + 1),
-        (x, y + 1),
+        (x,     y + 1),
         (x + 1, y + 1),
     ]
 
 
 def add_navmesh_edges(graph: nx.Graph[Node]) -> None:
-    """on ajute les arêtes en tenant compte biensur des poids de chacune d'elle,
-    pour cela on a bien défini notre fonction distance_between_points"""
+    """ajoute les arêtes pondérées par la distance euclidienne réelle en pixels."""
     for node in graph.nodes:
         for neighbor in neighbor_nodes(node):
             if neighbor in graph:
@@ -128,8 +125,7 @@ def create_navmesh(game_map: Map) -> NavMesh:
 
 
 def nearest_node(navmesh: NavMesh, point: Point) -> Node:
-    """cette fonction est essentielle à l'algorithme de dijkstra, car elle
-    retourne le noeud du navmesh le plus proche d'un point"""
+    """retourne le noeud du navmesh le plus proche d'un point en pixels."""
     return min(
         navmesh.graph.nodes,
         key=lambda node: distance_between_points(point, node_position(node)),
@@ -137,7 +133,7 @@ def nearest_node(navmesh: NavMesh, point: Point) -> Node:
 
 
 def shortest_path(navmesh: NavMesh, source: Point, target: Point) -> list[Point]:
-    """ trouve le chemin le moins couteux en 4 étapes :
+    """trouve le chemin le moins coûteux en 4 étapes :
     1. depuis la source, on trouve le noeud le plus proche
     2. on trouve le noeud le plus proche de la destination
     3. Dijkstra entre ces deux noeuds

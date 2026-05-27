@@ -16,19 +16,11 @@ if TYPE_CHECKING:
 
 
 class CollisionHandler:
-<<<<<<< HEAD
     """
     Centralise toutes les collisions :
     joueur vs cristaux, boucliers, ennemis, trous
     armes vs ennemis, switches, cristaux
     """
-=======
-    
-    #Centralise toutes les collisions :
-    # joueur vs cristaux, boucliers, ennemis, trous
-    # armes vs ennemis, switches, cristaux
-    
->>>>>>> 7607e3b (c)
 
     def __init__(
         self,
