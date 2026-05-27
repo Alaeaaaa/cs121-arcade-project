@@ -5,9 +5,7 @@ from textures import ANIMATION_BOOMERANG
 from weapon import Weapon
 
 
-from constants import (
-    BOOMERANG_SCALE
-)
+from constants import (BOOMERANG_SCALE)
 
 class BoomerangState(Enum):
     INACTIVE = auto()

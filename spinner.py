@@ -8,6 +8,7 @@ from utils import grid_to_pixels
 
 
 class Spinner(Enemy):
+<<<<<<< HEAD
 
     logic_x:float
     logic_y:float
@@ -17,6 +18,12 @@ class Spinner(Enemy):
     max_x:float
     min_y:float
     max_y:float
+=======
+    
+    #Spinner : se déplace en ligne droite (horizontal ou vertical),
+    #fait demi-tour en bout de course.
+    
+>>>>>>> 7607e3b (c)
 
     def __init__(
         self,

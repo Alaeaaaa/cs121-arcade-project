@@ -16,11 +16,23 @@ from constants import (
 from map import GridCell, Map
 from navmesh import NavMesh, Point, shortest_path
 from utils import grid_to_pixels, find_cells
+<<<<<<< HEAD
 from enemy import Enemy, EnemyContext
 from textures import ANIMATION_SLIME
 
 
 class Slime(Enemy):
+=======
+from enemy import Enemy
+from textures import ANIMATION_SLIME  
+
+
+class Slime(Enemy):
+    
+    #Slime : patrouille autour de sa position de départ,
+    #poursuit le joueur s'il le voit.
+    
+>>>>>>> 7607e3b (c)
 
     def __init__(
         self,
@@ -32,8 +44,12 @@ class Slime(Enemy):
         y: float,
         possible_destinations: list[tuple[int, int]],
     ) -> None:
+<<<<<<< HEAD
         super().__init__(animation=ANIMATION_SLIME, scale=SCALE)
 
+=======
+        super().__init__(animation=ANIMATION_SLIME, scale=SCALE)  
+>>>>>>> 7607e3b (c)
         self.start_x = start_x
         self.start_y = start_y
         self.logic_x = x
