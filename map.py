@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Final
 from abc import abstractmethod
-
 import yaml
 
 type YAMLValue = (
@@ -57,7 +56,7 @@ class SwitchIsOn(GateCondition):
             )
         return switch_states[self.switch_id]
 
-
+#conditions d'ouverture des portails.
 @dataclass(frozen=True)
 class NotCondition(GateCondition):
     condition: GateCondition

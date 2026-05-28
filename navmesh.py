@@ -48,15 +48,30 @@ def is_slime_obstacle(cell: GridCell) -> bool:
     }
 
 def _is_too_close_to_bush(position: Point, map: Map) -> bool:
-        """check si on est trop prche d'un buisson de la map. Le problème est la complexité..."""
-        for y in range(map.height):
-            for x in range(map.width):
-                if map.get(x, y) == GridCell.BUSH:
-                    bush_center = (grid_to_pixels(x), grid_to_pixels(y))
+    """check si on est trop prche d'un buisson de la map. Le problème était la complexité, parce
+    qu'au début, on parcourait toute la map à chaque appel de cette fonction, je vous laisse donc imaginer...
+    La solution qu'on a trouvé était de voir juste les noeuds proches du point en entrée, donc ses voisins, on n'a pas
+    besoin de connaître toute la map !"""
 
-                    if distance_between_points(position, bush_center) < TILE_SIZE:
+    #on transforme notre point en coordonnées dans la grille.
+    #en gros, on cherche la case dans laquelle il se trouve, son "indice", d'où la division
+    #entière qui renvoie le quotient !
+    grid_x= int(position[0]//TILE_SIZE)
+    grid_y= int(position[1]//TILE_SIZE)
+
+    #à noter que les voisins sont tous soit à -1,0 ou 1 en terme de coordonnées, d'où le range choisi.
+    for y in range(-1,2):
+        for x in range(-1,2):
+            neighbor_x = grid_x + x
+            neighbor_y = grid_y + y
+            if is_inside_map(map,neighbor_x,neighbor_y):
+                #on vérifie que le voisin est à l'intérieur de la map !
+                if map.get(neighbor_x, neighbor_y) == GridCell.BUSH:
+                    bush_center = ( grid_to_pixels(neighbor_x), grid_to_pixels(neighbor_y))
+                    if distance_between_points(position, bush_center)<TILE_SIZE:
                         return True
-        return False
+
+    return False
 
 def can_slime_stand_on(game_map: Map, x: int, y: int) -> bool:
     # renvoie un booléen : True si on peut positionner le slime, False sinon

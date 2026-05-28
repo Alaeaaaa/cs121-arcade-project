@@ -4,7 +4,7 @@ from enemy import EnemyContext
 import random
 
 import arcade
-from constants import MAX_WINDOW_HEIGHT, MAX_WINDOW_WIDTH, SCALE, SHIELD_SCALE, SWITCH_SCALE, TILE_SIZE
+from constants import MAX_WINDOW_HEIGHT, MAX_WINDOW_WIDTH, SCALE, SHIELD_SCALE, SWITCH_SCALE, TILE_SIZE, LEFT_MARGIN, RIGHT_MARGIN, BOTTOM_MARGIN, TOP_MARGIN
 from textures import (
     ANIMATION_CRYSTAL,
     ANIMATION_PLAYER_IDLE_DOWN,
@@ -190,6 +190,45 @@ class GameView(arcade.View):
         #au début aucune touche n'est appuyée
         self.right = self.left = self.up = self.down = False
 
+    def _update_camera(self)->None:
+        """cette méthode a été ajouté à la toute fin quand on s'est rendu compte qu'on avait oublié
+        de régler le souci de la partie bleu visinle de l'écran. On n'a pas eu le temps de réfléchir en
+        terme de design à où la mettre ou la définir, elle est donc directement définie dans gameview"""
+        camera_x, camera_y = self.camera.position
+        half_width = self.window.width / 2
+        half_height = self.window.height / 2
+
+        left_edge = camera_x - half_width
+        right_edge = camera_x + half_width
+        bottom_edge = camera_y - half_height
+        top_edge = camera_y + half_height
+
+        if self.player.left < left_edge + LEFT_MARGIN:
+            camera_x = self.player.left - LEFT_MARGIN + half_width
+        if self.player.right > right_edge - RIGHT_MARGIN:
+            camera_x = self.player.right + RIGHT_MARGIN - half_width
+        if self.player.bottom < bottom_edge + BOTTOM_MARGIN:
+            camera_y = self.player.bottom - BOTTOM_MARGIN + half_height
+        if self.player.top > top_edge - TOP_MARGIN:
+            camera_y = self.player.top + TOP_MARGIN - half_height
+
+        if self.world_width <= self.window.width:
+            camera_x = self.world_width / 2
+        else:
+            min_camera_x = half_width
+            max_camera_x = self.world_width - half_width
+            camera_x = max(min_camera_x, min(camera_x, max_camera_x))
+
+        if self.world_height <= self.window.height:
+            camera_y = self.world_height / 2
+        else:
+            min_camera_y = half_height
+            max_camera_y = self.world_height - half_height
+            camera_y = max(min_camera_y, min(camera_y, max_camera_y))
+
+        self.camera.position = (camera_x, camera_y)
+
+
     # fonctions arcade:
 
     def on_show_view(self) -> None:
@@ -254,7 +293,7 @@ class GameView(arcade.View):
         self.weapons.update_animations()
 
         self.collisions.handle_player()
-        self.camera.position = self.player.position
+        self._update_camera()
 
     # Switches et gates
     def _sync_gate(self, switch:Switch, switch_sprite: arcade.Sprite) -> None:

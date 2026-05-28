@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from map import GateCondition, GateConfig, Map, SwitchConfig
 
-
 @dataclass
 class Switch:
     switch_id: str
@@ -24,7 +23,6 @@ class Gate:
     open_if: GateCondition
     is_open: bool
 
-
 def create_switch(config: SwitchConfig) -> Switch:
     return Switch(
         switch_id=config.switch_id,
@@ -33,7 +31,6 @@ def create_switch(config: SwitchConfig) -> Switch:
         is_on=config.is_on,
         is_being_hit=False,
     )
-
 
 def create_gate(
     config: GateConfig,
