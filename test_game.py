@@ -24,7 +24,7 @@ MAP_OUVERTE = map_from_string(
 
 # map avec un buisson au milieu pour voir si il est bien bloquant
 MAP_BUISSON = map_from_string(
-    "width: 3\nheight: 1\n---\nPxP\n---\n"
+    "width: 3\nheight: 1\n---\nPx \n---\n"
 )
 
 
@@ -118,10 +118,15 @@ class TestNavmesh:
 
     def test_noeuds_accessibles_et_obstacles_exclus(self):
         from navmesh import create_navmesh
-        # il y a 9 cases d'herbe donc normalement 9 noeuds
-        assert len(create_navmesh(MAP_OUVERTE).graph.nodes) == 9
-        # le buisson est un obstacle donc il doit pas etre dans le graphe
-        assert (1, 0) not in create_navmesh(MAP_BUISSON).graph.nodes
+        # chaque case est divisée en 9 petits noeuds, donc 3x3 cases donne 81 noeuds
+        assert len(create_navmesh(MAP_OUVERTE).graph.nodes) == 81
+        navmesh = create_navmesh(MAP_BUISSON)
+        # le buisson est la case du milieu, donc ses mini-noeuds ne doivent pas exister
+        assert all(
+            (x, y) not in navmesh.graph.nodes
+            for x in range(3, 6)
+            for y in range(0, 3)
+        )
 
     def test_chemin_trouve_et_graphe_vide_retourne_cible(self):
         from navmesh import create_navmesh, shortest_path, NavMesh
