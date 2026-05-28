@@ -7,7 +7,7 @@ import math
 import networkx as nx
 
 from map import GridCell, Map
-from utils import grid_to_pixels
+from utils import grid_to_pixels,is_inside_map
 
 Node = tuple[int, int]
 Point = tuple[float, float]
@@ -38,21 +38,17 @@ def distance_between_points(p1: Point, p2: Point) -> float:
     x2, y2 = p2
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-
-def is_inside_map(game_map: Map, x: int, y: int) -> bool:
-    return 0 <= x < game_map.width and 0 <= y < game_map.height
-
-
 def is_slime_obstacle(cell: GridCell) -> bool:
     """les slimes ne peuvent pas marcher sur les trous et buissons,
     c'est ce qu'on vérifie ici: """
     return cell in {
         GridCell.BUSH,
         GridCell.HOLE,
+        GridCell.GATE,
     }
 
 def _is_too_close_to_bush(position: Point, map: Map) -> bool:
-        """check si on est trop prche d'un buisson de la map"""
+        """check si on est trop prche d'un buisson de la map. Le problème est la complexité..."""
         for y in range(map.height):
             for x in range(map.width):
                 if map.get(x, y) == GridCell.BUSH:

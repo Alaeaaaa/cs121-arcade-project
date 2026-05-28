@@ -7,7 +7,7 @@ from direction import Direction
 
 class Weapon(arcade.TextureAnimationSprite):
 
-    def __init__(self, animation: arcade.TextureAnimation , scale: float):
+    def __init__(self, animation: arcade.TextureAnimation , scale: float)->None:
 
         super().__init__(animation=animation, scale=scale)
         self.direction = Direction.SOUTH

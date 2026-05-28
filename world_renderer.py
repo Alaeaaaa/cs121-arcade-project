@@ -1,27 +1,18 @@
 from __future__ import annotations
-
-from typing import TYPE_CHECKING
+from constants import SCALE
+from textures import BOOMERANG_ICON, SWORD_ICON
 
 import arcade
 
-# TYPE_CHECKING vaut False à l'exécution : ces imports ne sont évalués
-# que par les outils d'analyse statique (mypy, Pylance…), ce qui coupe
-# les cycles tout en gardant les annotations correctes.
-if TYPE_CHECKING:
-    from player import Player
-    from weapon_system import WeaponSystem
-    from enemy_system import EnemySystem
-
-# ActiveWeapon est une enum légère, sans dépendance inverse vers ce module ;
-# on peut l'importer normalement. Si ça crée quand même un cycle, déplacez-le
-# dans le bloc TYPE_CHECKING et remplacez le paramètre par `int` ou `str`.
+from player import Player
+from weapon_system import WeaponSystem
+from enemy_system import EnemySystem
 from weapon_system import ActiveWeapon
 
-
 class WorldRenderer:
-    # Responsable unique du dessin : monde et interface.
-    # Séparer le rendu de GameView améliore la lisibilité et l'architecture
-    # (cf. fichier de design).
+    """c'est le responsable unique du dessin. pourquoi c'est intéressant ? parce qu'à présent c'est
+    ici que le dessin de tout ce qui apparaît à l'écran se fait. On a ainsi centralisé tout ce qui touche
+    à l'aspect visuel de notre jeu dans cette classe!"""
 
     player: Player
     weapons: WeaponSystem
@@ -61,8 +52,7 @@ class WorldRenderer:
         self.switch_sprites = switch_sprites
         self.player_list = player_list
 
-    # ------------------------------------------------------------------ monde
-
+    # le monde:
     def draw_world(self) -> None:
         self.grounds.draw()
         self.walls.draw()
@@ -72,27 +62,40 @@ class WorldRenderer:
         self.shields.draw()
         self.switch_sprites.draw()
 
-        # Ennemis
+        #Ennemis:
         self.enemies.bat_sprites.draw()
         self.enemies.slime_sprites.draw()
         self.enemies.spinner_sprites.draw()
 
         self.player_list.draw()
 
-        # Armes actives
+        #armes actives:
         if self.weapons.boomerang.is_active():
             self.weapons.boomerang_list.draw()
         if self.weapons.sword.is_active():
             self.weapons.sword_list.draw()
 
-    # ------------------------------------------------------------------ UI
-
+    # UI:
     def draw_ui(self, score: int, active_weapon: ActiveWeapon) -> None:
         """Délègue l'affichage de chaque élément d'interface."""
         self._draw_score(score)
         self._draw_weapon(active_weapon)
         self._draw_health()
         self._draw_shield()
+        #on dessine les icones des armes :
+        texture = (
+            BOOMERANG_ICON
+            if active_weapon == ActiveWeapon.BOOMERANG
+            else SWORD_ICON )
+
+        arcade.draw_sprite(
+            arcade.Sprite(
+                texture,
+                scale=SCALE,
+                center_x=20,
+                center_y=400,
+            )
+)
 
     def _draw_score(self, score: int) -> None:
         """Score en bas à gauche."""

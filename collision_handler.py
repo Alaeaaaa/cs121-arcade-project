@@ -21,11 +21,10 @@ class CollisionHandler:
     joueur vs cristaux, boucliers, ennemis, trous
     armes vs ennemis, switches, cristaux
     """
- 
+
     def __init__(
         self,
         player: Player,
-        weapon_system: WeaponSystem,
         enemies: EnemySystem,
         crystals: arcade.SpriteList,
         shields: arcade.SpriteList,
@@ -40,7 +39,6 @@ class CollisionHandler:
         on_gate_sync: Callable[[Switch, arcade.Sprite], None],
     ) -> None:
         self.player = player
-        self.weapons = weapon_system
         self.enemies = enemies
         self.crystals = crystals
         self.shields = shields

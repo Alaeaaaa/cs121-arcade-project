@@ -20,16 +20,11 @@ from utils import grid_to_pixels, find_cells
 from enemy import Enemy, EnemyContext
 from textures import ANIMATION_SLIME
 
-
-from enemy import Enemy
-from textures import ANIMATION_SLIME  
-
-
 class Slime(Enemy):
-    
+
     #Slime : patrouille autour de sa position de départ,
     #poursuit le joueur s'il le voit.
-    
+
 
 
     def __init__(
@@ -44,9 +39,6 @@ class Slime(Enemy):
     ) -> None:
 
         super().__init__(animation=ANIMATION_SLIME, scale=SCALE)
-
-
-        super().__init__(animation=ANIMATION_SLIME, scale=SCALE)  
 
         self.start_x = start_x
         self.start_y = start_y
@@ -118,6 +110,10 @@ class Slime(Enemy):
 
     def _set_destination_to_player(self, navmesh: NavMesh, player_position: Point) -> None:
         """on selectionne la position du joueur comme destination, mais juste si elle a "assez changé" """
+        px,py=player_position
+        dist_player=math.dist((px,py),(self.destination_x,self.destination_y))
+        if dist_player<DESTINATION_EPSILON:
+            return
         self.destination_x, self.destination_y = player_position
         self._recompute_path(navmesh)
 

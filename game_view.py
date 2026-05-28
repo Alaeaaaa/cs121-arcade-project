@@ -158,7 +158,6 @@ class GameView(arcade.View):
 
         self.collisions = CollisionHandler(
             player=self.player,
-            weapon_system=self.weapons,
             enemies=self.enemies,
             crystals=self.crystals,
             shields=self.shields,

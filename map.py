@@ -7,6 +7,17 @@ from abc import abstractmethod
 
 import yaml
 
+type YAMLValue = (
+    int
+    | str
+    | bool
+    | list["YAMLValue"]
+    | dict[str, "YAMLValue"]
+)
+"""il peut représenter des valeurs primitives (nombres, chaînes de caractères, booléens),
+des listes et des dictionnaires. copie littérale de ce qui est dans les instructions. On
+a défini ce type pour éviter le recours à object et Any."""
+
 class GridCell(Enum):
     GRASS = auto()
     BUSH = auto()
@@ -79,7 +90,7 @@ class OrCondition(GateCondition):
         )
 
 
-def parse_gate_condition(data: object) -> GateCondition:
+def parse_gate_condition(data: YAMLValue) -> GateCondition:
     """ Une condition de portail est un dictionnaire YAML avec exactement une clef.
     on ne sait pas ce qu'il y'a à l'entrée, mais on doit vérifier que c'est un dictionnaire"""
     if not isinstance(data, dict):
@@ -135,7 +146,7 @@ class GateConfig:
     open_if: GateCondition
 
 
-def parse_switch_config(data: object) -> SwitchConfig:
+def parse_switch_config(data: YAMLValue) -> SwitchConfig:
     if not isinstance(data, dict):
         raise InvalidMapFileException("Chaque switch doit être un dictionnaire")
 
@@ -161,7 +172,7 @@ def parse_switch_config(data: object) -> SwitchConfig:
     )
 
 
-def parse_gate_config(data: object) -> GateConfig:
+def parse_gate_config(data: YAMLValue) -> GateConfig:
     if not isinstance(data, dict):
         raise InvalidMapFileException("Chaque gate doit être un dictionnaire")
 
@@ -178,7 +189,7 @@ def parse_gate_config(data: object) -> GateConfig:
     return GateConfig(x=x, y=y, open_if=parse_gate_condition(open_if))
 
 
-def parse_switches(data: object) -> list[SwitchConfig]:
+def parse_switches(data: YAMLValue|None) -> list[SwitchConfig]:
     if data is None:
         return []
     if not isinstance(data, list):
@@ -186,7 +197,7 @@ def parse_switches(data: object) -> list[SwitchConfig]:
     return [parse_switch_config(item) for item in data]
 
 
-def parse_gates(data: object) -> list[GateConfig]:
+def parse_gates(data: YAMLValue|None) -> list[GateConfig]:
     if data is None:
         return []
     if not isinstance(data, list):
@@ -254,7 +265,7 @@ def split_map_file(text: str) -> tuple[str, list[str]]:
     return config_text, grid_lines
 
 
-def parse_config(config_text: str) -> dict[str, object]:
+def parse_config(config_text: str) -> dict[str, YAMLValue]:
     data = yaml.safe_load(config_text)
 
     if not isinstance(data, dict):

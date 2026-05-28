@@ -176,6 +176,10 @@ ANIMATION_SWORD: Final[dict[Direction, arcade.TextureAnimation]] = {
     for direction, file_direction in DIRECTION_NAMES.items()
 }
 
+# pour l'affichage des icones des armes :
+BOOMERANG_ICON = ANIMATION_BOOMERANG.keyframes[0].texture
+SWORD_ICON = ANIMATION_SWORD[Direction.SOUTH].keyframes[3].texture
+
 # Sons
 
 SOUND_COIN: Final[arcade.Sound] = arcade.load_sound(

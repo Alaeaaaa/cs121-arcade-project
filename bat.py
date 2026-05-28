@@ -8,7 +8,7 @@ from utils import grid_to_pixels, find_cells
 from enemy import Enemy, EnemyContext
 from textures import ANIMATION_BAT
 
-from constants import BAT_SPEED, BAT_WIDTH, BAT_HEIGHT, SCALE
+from constants import BAT_SPEED, BAT_WIDTH, BAT_HEIGHT, SCALE, FRAMES_BAT_TURN
 
 
 def _clamp(value: float, min_value: float, max_value: float) -> int:
@@ -25,7 +25,6 @@ def _random_velocity(rng: random.Random, speed: float) -> tuple[float, float]:
 
 
 class Bat(Enemy):
-
     """Chauve-souris : rebondit dans un rectangle de mouvement.
     à noter qu'on a opté pour un design séparant logique et affichage,
     c'est sync_sprite qui donnera à center_x et y leurs valeurs. """
@@ -37,10 +36,8 @@ class Bat(Enemy):
     max_x:int
     min_y:int
     max_y:int
-
-    #Chauve-souris : rebondit dans un rectangle de mouvement.
-
-
+    frames_to_turn: int
+    rng: random.Random
     def __init__(
         self,
         start_x: float,
@@ -51,6 +48,7 @@ class Bat(Enemy):
         max_x: int,
         min_y: int,
         max_y: int,
+        rng: random.Random,
     ) -> None:
         super().__init__(animation=ANIMATION_BAT, scale=SCALE)
 
@@ -62,20 +60,37 @@ class Bat(Enemy):
         self.max_x = max_x
         self.min_y = min_y
         self.max_y = max_y
+        self.frames_to_turn = FRAMES_BAT_TURN
+        self.rng = rng
+    def _turn_velocity_slightly(self) -> tuple[float, float]:
+        angle = math.atan2(self.dy, self.dx)
+        angle += self.rng.uniform(-math.pi / 6, math.pi / 6)
+        return math.cos(angle) * BAT_SPEED, math.sin(angle) * BAT_SPEED
 
     def update_logic(self, context:EnemyContext) -> None:
         """c'est la fonction qui met à jour la pos logique de la bat."""
-        self.logic_x += self.dx
-        self.logic_y += self.dy
+        next_x = self.logic_x + self.dx
+        next_y = self.logic_y + self.dy
 
-        if self.logic_x <= self.min_x or self.logic_x >= self.max_x:
+        if next_x <= self.min_x or next_x >= self.max_x:
             """càd qu'on a atteint les limites du rectangle d'action, on inverse la vitesse."""
             self.dx = -self.dx
-            self.logic_x = _clamp(self.logic_x, self.min_x, self.max_x)
+            next_x = self.logic_x + self.dx
+            self.frames_to_turn = FRAMES_BAT_TURN
 
-        if self.logic_y <= self.min_y or self.logic_y >= self.max_y:
+        if next_y <= self.min_y or next_y >= self.max_y :
             self.dy = -self.dy
-            self.logic_y = _clamp(self.logic_y, self.min_y, self.max_y)
+            next_y = self.logic_y + self.dy
+            self.frames_to_turn = FRAMES_BAT_TURN
+
+        self.logic_x = next_x
+        self.logic_y = next_y
+
+        self.frames_to_turn -= 1
+
+        if self.frames_to_turn <= 0:
+            self.dx, self.dy = self._turn_velocity_slightly()
+            self.frames_to_turn = FRAMES_BAT_TURN
 
     def sync_sprite(self) -> None:
         self.center_x = self.logic_x
@@ -110,6 +125,7 @@ def create_bat(game_map: Map, x: int, y: int, rng: random.Random) -> Bat:
         max_x=max_x,
         min_y=min_y,
         max_y=max_y,
+        rng=rng
     )
 
 

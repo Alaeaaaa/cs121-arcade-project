@@ -73,6 +73,8 @@ class EnemySystem:
             sprite.update_animation()
         for sprite in self.slime_sprites:
             sprite.update_animation()
+        for sprite in self.spinner_sprites:
+            sprite.update_animation()
 
     @property
     def all_sprites(self) -> list[arcade.SpriteList]:

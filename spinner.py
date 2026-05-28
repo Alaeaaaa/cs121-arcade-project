@@ -4,7 +4,7 @@ from constants import SCALE, SPINNER_MOVEMENT_SPEED, TILE_SIZE
 from map import GridCell, Map
 from enemy import Enemy, EnemyContext
 from textures import ANIMATION_SPINNER
-from utils import grid_to_pixels
+from utils import grid_to_pixels,is_inside_map
 
 
 class Spinner(Enemy):
@@ -19,10 +19,10 @@ class Spinner(Enemy):
     min_y:float
     max_y:float
 
-    
+
     #Spinner : se déplace en ligne droite (horizontal ou vertical),
     #fait demi-tour en bout de course.
-    
+
 
 
     def __init__(
@@ -73,14 +73,10 @@ def _is_blocking_cell(cell: GridCell) -> bool:
     return cell == GridCell.BUSH
 
 
-def _is_inside_map(game_map: Map, x: int, y: int) -> bool:
-    return 0 <= x < game_map.width and 0 <= y < game_map.height
-
-
 def _scan_until_blocked(game_map: Map, x: int, y: int, dx: int, dy: int) -> tuple[int, int]:
     """on avance dans une direction jusqu'à rencontrer un obstacle ou un bord"""
     nx, ny = x + dx, y + dy
-    while _is_inside_map(game_map, nx, ny) and not _is_blocking_cell(game_map.get(nx, ny)):
+    while is_inside_map(game_map, nx, ny) and not _is_blocking_cell(game_map.get(nx, ny)):
         x, y = nx, ny
         nx, ny = x + dx, y + dy
     return x, y
