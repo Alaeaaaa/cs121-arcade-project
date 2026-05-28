@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Final, Any
+from typing import Final
 from abc import abstractmethod
 
 import yaml
@@ -79,7 +79,7 @@ class OrCondition(GateCondition):
         )
 
 
-def parse_gate_condition(data: Any) -> GateCondition:
+def parse_gate_condition(data: object) -> GateCondition:
     """ Une condition de portail est un dictionnaire YAML avec exactement une clef.
     on ne sait pas ce qu'il y'a à l'entrée, mais on doit vérifier que c'est un dictionnaire"""
     if not isinstance(data, dict):
@@ -135,7 +135,7 @@ class GateConfig:
     open_if: GateCondition
 
 
-def parse_switch_config(data: Any) -> SwitchConfig:
+def parse_switch_config(data: object) -> SwitchConfig:
     if not isinstance(data, dict):
         raise InvalidMapFileException("Chaque switch doit être un dictionnaire")
 
@@ -161,7 +161,7 @@ def parse_switch_config(data: Any) -> SwitchConfig:
     )
 
 
-def parse_gate_config(data: Any) -> GateConfig:
+def parse_gate_config(data: object) -> GateConfig:
     if not isinstance(data, dict):
         raise InvalidMapFileException("Chaque gate doit être un dictionnaire")
 
@@ -178,7 +178,7 @@ def parse_gate_config(data: Any) -> GateConfig:
     return GateConfig(x=x, y=y, open_if=parse_gate_condition(open_if))
 
 
-def parse_switches(data: Any) -> list[SwitchConfig]:
+def parse_switches(data: object) -> list[SwitchConfig]:
     if data is None:
         return []
     if not isinstance(data, list):
@@ -186,7 +186,7 @@ def parse_switches(data: Any) -> list[SwitchConfig]:
     return [parse_switch_config(item) for item in data]
 
 
-def parse_gates(data: Any) -> list[GateConfig]:
+def parse_gates(data: object) -> list[GateConfig]:
     if data is None:
         return []
     if not isinstance(data, list):
@@ -254,7 +254,7 @@ def split_map_file(text: str) -> tuple[str, list[str]]:
     return config_text, grid_lines
 
 
-def parse_config(config_text: str) -> dict[str, Any]:
+def parse_config(config_text: str) -> dict[str, object]:
     data = yaml.safe_load(config_text)
 
     if not isinstance(data, dict):
