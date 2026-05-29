@@ -1,0 +1,46 @@
+width: 40
+height: 15
+switches:
+  - id: first
+    x: 8
+    y: 5
+  - id: second
+    x: 30
+    y: 9
+    state: "on"
+  - id: third
+    x: 18
+    y: 12
+gates:
+  - x: 15
+    y: 5
+    open_if:
+      switch_is_on: first
+  - x: 24
+    y: 9
+    open_if:
+      not:
+        - switch_is_on: second
+  - x: 21
+    y: 12
+    open_if:
+      and:
+        - switch_is_on: first
+        - switch_is_on: third
+---
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+x P   *       x       *        A       x
+x   xxxx   O  x            xxxx        x
+x             x          m      x      x
+x  *          x          *             x
+x       ^     x| xxxxxxxx         s    x
+x   ^         x    *                   x
+x    xxxx                 O            x
+x   A     *         x         A        x
+x      m            x   |     ^        x
+x                   x         *        x
+x   *     O    A    x     xxxxx    m   x
+x       v     *   ^ x|                 x
+x    s              x       v     *    x
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+---

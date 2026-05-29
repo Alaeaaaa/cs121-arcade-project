@@ -44,23 +44,26 @@ times = []
 
 NUMBER = 10
 
+def benchmark(text:str) -> None:
+    #on lit la map avec map_from_string
+    game_map = map_from_string(text)
+    #on instancie gameview avec
+    GameView(game_map)
+
 for size in sizes:
     print(f"Benchmark map {size}x{size}")
     text = create_map(size)
-    def benchmark() -> None:
-        #on lit la map avec map_from_string
-        game_map = map_from_string(text)
-        #on instancie gameview avec
-        GameView(game_map)
-    #on utilise timeit et benchmark pour connaître le temps total
+    #on utilise timeit et benchmark pour connaître le temps total, number est explicitement
+    #passé comme argument comme on a vu en cours.
     total_time = timeit.timeit(
-        benchmark,
-        number=NUMBER,
-    )
+        lambda:benchmark(text),
+        number=NUMBER)
+
     average_time = total_time / NUMBER
     cell_count = size * size
     cells.append(cell_count)
     times.append(average_time)
+    #les print nous permettent de voir de cette façon le temps pour chaque taille
     print(
         f"{cell_count} cellules "
         f"-> {average_time:.6f} s"
@@ -74,7 +77,5 @@ plt.ylabel("Temps moyen de chargement (s)")
 plt.title("Temps de chargement selon la taille de la map")
 
 plt.grid(True)
-
-plt.savefig("loading_benchmark.png")
 
 plt.show()
